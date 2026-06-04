@@ -1,103 +1,95 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function TenantLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TenantLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Define our navigation links
   const navLinks = [
-    { name: 'Overview', href: '/dashboard', icon: LayoutGridIcon },
-    { name: 'Properties', href: '/properties', icon: BuildingIcon },
-    { name: 'Billing', href: '/billing', icon: CreditCardIcon },
-    { name: 'Community', href: '/community', icon: MessageSquareIcon },
+    { name: 'Overview', href: '/dashboard', icon: '📊' },
+    { name: 'My Rental', href: '/properties', icon: '🏠' },
+    { name: 'Billing', href: '/billing', icon: '💳' },
+    { name: 'Community', href: '/community', icon: '💬' },
+    { name: 'Profile', href: '/profile', icon: '👤' },
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50/30">
-      {/* ---------------------------------------------------- */}
-      {/* ---------------------------------------------------- */}
-      <aside className="w-[260px] bg-[#fafafa] border-r border-gray-200 flex flex-col hidden md:flex">
-        {/* Logo Section */}
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#111827] rounded-xl flex items-center justify-center text-white shrink-0">
-            <HomeIcon />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">Rentora</h1>
-            <p className="text-xs text-gray-500 font-medium">Property OS</p>
-          </div>
-        </div>
+    <div className="flex h-screen bg-transparent overflow-hidden">
+      
+      {/* MOBILE HEADER (Only visible on small screens) */}
+      <div className="md:hidden absolute top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-40 shadow-sm">
+        <div className="font-bold text-xl text-[#1c6456] tracking-tight">Rentora</div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="text-gray-600 hover:text-gray-900 focus:outline-none"
+        >
+          {/* Hamburger Icon */}
+          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+      </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 px-4 space-y-1.5 mt-2">
+      {/* MOBILE MENU OVERLAY (Darkens background when menu is open) */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-gray-900/50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* SIDEBAR (Responsive behavior) */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:relative md:translate-x-0
+      `}>
+        <div className="h-16 flex items-center px-6 border-b border-gray-100 justify-between">
+          <div className="font-bold text-2xl text-[#1c6456] tracking-tight">Rentora</div>
+          {/* Mobile close button inside sidebar */}
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-500 text-xl">✕</button>
+        </div>
+        
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navLinks.map((link) => {
-            const isActive = pathname.startsWith(link.href);
+            const isActive = pathname === link.href;
             return (
-              <Link
-                key={link.name}
+              <Link 
+                key={link.name} 
                 href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)} // Close menu on click for mobile
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-[#111827] text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  isActive 
+                    ? 'bg-[#1c6456]/10 text-[#1c6456]' 
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <link.icon className={`w-4 h-4 ${isActive ? 'opacity-100' : 'opacity-70'}`} />
+                {/* <span>{link.icon}</span> */}
                 {link.name}
               </Link>
             );
           })}
         </nav>
+        
+        <div className="p-4 border-t border-gray-100">
+          <button 
+            onClick={() => { localStorage.removeItem('rentora_token'); window.location.href = '/login'; }} 
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            🚪 Logout
+          </button>
+        </div>
       </aside>
 
-      {/* ---------------------------------------------------- */}
-      {/* ---------------------------------------------------- */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        
-        {/* Top Header */}
-        <header className="h-20 flex items-center justify-end px-8 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Search Action */}
-            <button className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-              <SearchIcon />
-            </button>
-            {/* Notification Action */}
-            <button className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors relative">
-              <span className="absolute top-2 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-              <BellIcon />
-            </button>
-            {/* User Avatar */}
-            <button className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#111827] text-white hover:bg-gray-800 transition-colors ml-1">
-              <UserIcon />
-            </button>
-          </div>
-        </header>
-
-        {/* Dynamic Page Content Injector */}
-        <div className="flex-1 overflow-auto px-8 pb-8">
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 relative overflow-y-auto pt-16 md:pt-0">
+        <div className="p-4 md:p-8">
           {children}
         </div>
-        
       </main>
     </div>
   );
 }
-
-// ----------------------------------------------------
-// SIMPLE SVG ICONS (Replaces the need for external libraries initially)
-// ----------------------------------------------------
-function HomeIcon(props: any) { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>; }
-function LayoutGridIcon(props: any) { return <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>; }
-function BuildingIcon(props: any) { return <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>; }
-function CreditCardIcon(props: any) { return <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>; }
-function MessageSquareIcon(props: any) { return <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>; }
-function SearchIcon(props: any) { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>; }
-function BellIcon(props: any) { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>; }
-function UserIcon(props: any) { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>; }

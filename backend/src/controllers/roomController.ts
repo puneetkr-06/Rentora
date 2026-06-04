@@ -58,7 +58,6 @@ export const getRoomsByProperty = async (req: AuthRequest, res: Response): Promi
   const owner_id = req.user.id;
 
   try {
-    // 1. Security Check: Verify the property belongs to this owner
     const { data: property, error: propError } = await supabase
       .from('properties')
       .select('id')
@@ -70,19 +69,100 @@ export const getRoomsByProperty = async (req: AuthRequest, res: Response): Promi
       return res.status(403).json({ error: 'Unauthorized to view these rooms.' });
     }
 
-    // 2. Fetch all rooms tied to this property
+    // UPDATED: Now we fetch the active lease and the tenant's full profile details!
     const { data, error } = await supabase
       .from('rooms')
-      .select('*')
+      .select(`
+        *,
+        leases (
+          id, start_date, deposit_amount, status,
+          users (
+            full_name, email, phone, gender, date_of_birth,
+            permanent_address, city, state, pin_code,
+            occupation_type, company_name, job_title,
+            emergency_contact_name, emergency_contact_relationship, emergency_contact_number,
+            aadhaar_number
+          )
+        )
+      `)
       .eq('property_id', propertyId)
-      .order('created_at', { ascending: true });
+      .order('room_number', { ascending: true });
 
     if (error) throw error;
 
-    res.status(200).json({
-      status: 'success',
-      rooms: data
-    });
+    res.status(200).json({ status: 'success', rooms: data });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
+export const deallocateRoom = async (req: AuthRequest, res: Response): Promise<any> => {
+  const { roomId } = req.params;
+  const owner_id = req.user.id;
+
+  try {
+    // 1. Verify the owner owns this room
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .select('id, properties(owner_id)')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError || !room || (room.properties as any).owner_id !== owner_id) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
+
+    // 2. Mark any ACTIVE leases for this room as PAST
+    const { error: leaseError } = await supabase
+      .from('leases')
+      .update({ status: 'PAST' })
+      .eq('room_id', roomId)
+      .eq('status', 'ACTIVE');
+
+    if (leaseError) throw leaseError;
+
+    // 3. Mark the room as VACANT
+    const { error: updateRoomError } = await supabase
+      .from('rooms')
+      .update({ status: 'VACANT' })
+      .eq('id', roomId);
+
+    if (updateRoomError) throw updateRoomError;
+
+    res.status(200).json({ status: 'success', message: 'Room successfully deallocated.' });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
+// --- DELETE A ROOM (Cascades & Removes Tenants Automatically) ---
+export const deleteRoom = async (req: AuthRequest, res: Response): Promise<any> => {
+  const { roomId } = req.params;
+  const owner_id = req.user.id;
+
+  try {
+    // 1. Verify the owner actually owns the property this room belongs to
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .select('id, properties(owner_id)')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError || !room || (room.properties as any).owner_id !== owner_id) {
+      return res.status(403).json({ error: 'Unauthorized to delete this room.' });
+    }
+
+    // 2. Delete the room. 
+    // Thanks to the ON DELETE CASCADE schema, any leases/tenant allocations 
+    // attached to this room will be automatically wiped from the database!
+    const { error: deleteError } = await supabase
+      .from('rooms')
+      .delete()
+      .eq('id', roomId);
+
+    if (deleteError) throw deleteError;
+
+    res.status(200).json({ status: 'success', message: 'Room and all associated tenant allocations deleted successfully.' });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
   }

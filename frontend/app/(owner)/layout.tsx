@@ -59,6 +59,20 @@ export default function OwnerLayout({
             );
           })}
         </nav>
+
+        {/* LOGOUT BUTTON SECTION */}
+        <div className="p-4 border-t border-gray-200 mt-auto">
+          <button 
+            onClick={() => { 
+              localStorage.removeItem('rentora_token'); 
+              window.location.href = '/login'; 
+            }} 
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <LogOutIcon className="w-4 h-4 opacity-70" />
+            Logout
+          </button>
+        </div>
       </aside>
 
       {/* MAIN CONTENT CONTENT */}
@@ -95,3 +109,4 @@ function MessageSquareIcon(props: any) { return <svg width="16" height="16" view
 function SearchIcon(props: any) { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>; }
 function BellIcon(props: any) { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>; }
 function UserIcon(props: any) { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>; }
+function LogOutIcon(props: any) { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>; }

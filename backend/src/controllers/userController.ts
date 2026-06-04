@@ -1,0 +1,51 @@
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/authMiddleware';
+import supabase from '../config/supabase';
+
+// Get Current User Profile
+export const getProfile = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*') // Selects all columns including the new ones
+      .eq('id', req.user.id)
+      .single();
+
+    if (error) throw error;
+    res.status(200).json({ status: 'success', user: data });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
+// Update User Profile
+export const updateProfile = async (req: AuthRequest, res: Response): Promise<any> => {
+  // Destructure all the new fields from the request body
+  const { 
+    full_name, phone, gender, date_of_birth, 
+    permanent_address, city, state, pin_code, 
+    occupation_type, company_name, job_title, 
+    emergency_contact_name, emergency_contact_relationship, emergency_contact_number, 
+    aadhaar_number 
+  } = req.body;
+
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        full_name, phone, gender, date_of_birth, 
+        permanent_address, city, state, pin_code, 
+        occupation_type, company_name, job_title, 
+        emergency_contact_name, emergency_contact_relationship, emergency_contact_number, 
+        aadhaar_number 
+      })
+      .eq('id', req.user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(200).json({ status: 'success', message: 'Profile updated successfully!', user: data });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
