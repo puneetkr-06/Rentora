@@ -18,6 +18,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log("1. Sending login request to backend...");
+      
       const response = await fetch('http://localhost:5001/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -25,16 +27,24 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
+      console.log("2. Backend responded with:", data);
 
       if (!response.ok) {
         throw new Error(data.message || data.error || 'Failed to login');
       }
 
-      // Save the secure token and user profile to localStorage
-      localStorage.setItem('rentora_token', data.token);
+      // Safely extract token regardless of what the backend named it
+      const secureToken = data.token || data.access_token || data.session?.access_token;
+
+      if (!secureToken) {
+        throw new Error("Backend login succeeded, but no token was returned!");
+      }
+
+      console.log("3. Saving token to Local Storage...");
+      localStorage.setItem('rentora_token', secureToken);
       localStorage.setItem('rentora_user', JSON.stringify(data.user));
 
-      // Route the user to their correct dashboard based on their role
+      console.log("4. Redirecting to dashboard...");
       if (data.user.role === 'OWNER') {
         router.push('/owner/dashboard');
       } else {
@@ -42,6 +52,7 @@ export default function LoginPage() {
       }
 
     } catch (err: any) {
+      console.error("LOGIN CRASHED:", err.message);
       setError(err.message);
     } finally {
       setLoading(false);

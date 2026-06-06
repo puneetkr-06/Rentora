@@ -16,17 +16,34 @@ export default function PropertiesPage() {
   const [formData, setFormData] = useState({ name: '', address: '', floors: 1, defaultRent: '' });
   const [floorConfigs, setFloorConfigs] = useState<{ rooms: number }[]>([]);
 
-  const fetchProperties = async () => {
+const fetchProperties = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('rentora_token');
+      console.log("1. Sending Owner Token:", token ? "Exists" : "MISSING!");
+      
       const res = await fetch('http://localhost:5001/api/properties', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
       const data = await res.json();
-      if (data.status === 'success') setProperties(data.properties);
+      console.log("2. Backend Response for Properties:", data); // Tells us exactly what Supabase sent back
+      
+      if (res.status === 401 || res.status === 403) {
+         console.error("TOKEN REJECTED BY BACKEND");
+         localStorage.removeItem('rentora_token');
+         window.location.href = '/login';
+         return;
+      }
+
+      if (data.status === 'success') {
+        setProperties(data.properties);
+        console.log("3. Properties found:", data.properties.length);
+      } else {
+        console.error("Backend Error:", data.message);
+      }
     } catch (e) { 
-      console.error(e); 
+      console.error("FETCH CRASHED:", e); 
     } finally { 
       setLoading(false); 
     }

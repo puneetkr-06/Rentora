@@ -42,16 +42,30 @@ export default function RoomManagementPage() {
   const [isDeletingProperty, setIsDeletingProperty] = useState(false);
 
   // --- API FUNCTIONS (Untouched logic) ---
+// 1. Fetch Rooms
   const fetchRooms = async () => {
     try {
       const token = localStorage.getItem('rentora_token');
       const response = await fetch(`http://localhost:5001/api/rooms/${propertyId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      // 🚨 ADD THIS: Intercept the dead token before it crashes the map function
+      if (response.status === 401 || response.status === 403) {
+        alert("Your session has expired for security reasons. Please log in again.");
+        localStorage.removeItem('rentora_token');
+        localStorage.removeItem('rentora_user');
+        window.location.href = '/login';
+        return;
+      }
+
       const data = await response.json();
       if (data.status === 'success') setRooms(data.rooms);
-    } catch (error) { console.error(error); }
-    finally { setLoading(false); }
+    } catch (error) { 
+      console.error(error); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { fetchRooms(); }, [propertyId]);
