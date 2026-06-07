@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,26 +13,21 @@ export default function PropertiesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   
-  // Wizard State - Added defaultRent here
+  // Wizard State
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({ name: '', address: '', floors: 1, defaultRent: '' });
-  const [floorConfigs, setFloorConfigs] = useState<{ rooms: number }[]>([]);
+  const [formData, setFormData] = useState<any>({ name: '', address: '', floors: 1, defaultRent: '' });
+  const [floorConfigs, setFloorConfigs] = useState<{ rooms: number }[]>([{ rooms: 1 }]);
 
-const fetchProperties = async () => {
+  const fetchProperties = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      console.log("1. Sending Owner Token:", token ? "Exists" : "MISSING!");
-      
-      const res = await fetch('http://localhost:5001/api/properties', {
+      const res = await fetch(`${API_URL}/properties`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       const data = await res.json();
-      console.log("2. Backend Response for Properties:", data); // Tells us exactly what Supabase sent back
       
       if (res.status === 401 || res.status === 403) {
-         console.error("TOKEN REJECTED BY BACKEND");
          localStorage.removeItem('rentora_token');
          window.location.href = '/login';
          return;
@@ -38,9 +35,6 @@ const fetchProperties = async () => {
 
       if (data.status === 'success') {
         setProperties(data.properties);
-        console.log("3. Properties found:", data.properties.length);
-      } else {
-        console.error("Backend Error:", data.message);
       }
     } catch (e) { 
       console.error("FETCH CRASHED:", e); 
@@ -51,9 +45,19 @@ const fetchProperties = async () => {
 
   useEffect(() => { fetchProperties(); }, []);
 
-  const handleFloorsChange = (count: number) => {
-    setFormData({...formData, floors: count});
-    setFloorConfigs(Array.from({ length: count }, () => ({ rooms: 1 })));
+  // 🚨 UPGRADED LOGIC: Safely parses numbers and preserves existing room configs!
+  const handleFloorsChange = (val: number | string) => {
+    setFormData({ ...formData, floors: val });
+
+    const parsedCount = parseInt(val as string);
+    if (!isNaN(parsedCount) && parsedCount > 0) {
+      setFloorConfigs(prev => {
+        return Array.from({ length: parsedCount }, (_, i) => ({
+          // Keep existing room count if the floor already existed, otherwise default to 1
+          rooms: prev[i] ? prev[i].rooms : 1 
+        }));
+      });
+    }
   };
 
   const handleCreateProperty = async () => {
@@ -62,7 +66,7 @@ const fetchProperties = async () => {
       const token = localStorage.getItem('rentora_token');
       
       // 1. Create Property
-      const propRes = await fetch('http://localhost:5001/api/properties', {
+      const propRes = await fetch(`${API_URL}/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ name: formData.name, address: formData.address })
@@ -76,30 +80,28 @@ const fetchProperties = async () => {
       // 2. Loop through floors and rooms to create them
       for (let f = 0; f < floorConfigs.length; f++) {
         for (let r = 0; r < floorConfigs[f].rooms; r++) {
-          const roomRes = await fetch('http://localhost:5001/api/rooms', {
+          const roomRes = await fetch(`${API_URL}/rooms`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({
               property_id: pId,
               room_number: `F${f + 1}R${r + 1}`,
               type: 'SINGLE',
-              rent_amount: parseInt(formData.defaultRent as string) || 0, // <-- NO MORE HARDCODED 5000
+              rent_amount: parseInt(formData.defaultRent as string) || 0,
               capacity: 1,
               status: 'VACANT'
             })
           });
           
-          if (!roomRes.ok) {
-             const roomData = await roomRes.json();
-             console.error("Room creation failed:", roomData.error);
-          }
+          if (!roomRes.ok) console.error("Room creation failed");
         }
       }
       
       // 3. Reset and Refresh
       setIsModalOpen(false);
       setStep(1);
-      setFormData({ name: '', address: '', floors: 1, defaultRent: '' }); // <-- Reset defaultRent as well
+      setFormData({ name: '', address: '', floors: 1, defaultRent: '' });
+      setFloorConfigs([{ rooms: 1 }]);
       fetchProperties();
       
     } catch (error: any) {
@@ -155,48 +157,91 @@ const fetchProperties = async () => {
             
             {step === 1 ? (
               <div className="space-y-4">
-                <input placeholder="Name (e.g. Lakeview)" className="w-full border p-2 rounded" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <input placeholder="Address" className="w-full border p-2 rounded" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-                <input type="number" placeholder="Number of Floors" className="w-full border p-2 rounded" value={formData.floors || ''} onChange={e => handleFloorsChange(parseInt(e.target.value))} />
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Property Name</label>
+                  <input placeholder="e.g. Lakeview Residency" className="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-[#1c6456]/20 focus:border-[#1c6456] outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                </div>
                 
-                {/* NEW INPUT FOR DEFAULT BASE RENT */}
-                <input 
-                  type="number" 
-                  placeholder="Default Base Rent per Room (₹)" 
-                  className="w-full border p-2 rounded" 
-                  value={formData.defaultRent} 
-                  onChange={e => setFormData({...formData, defaultRent: e.target.value})} 
-                />
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Address</label>
+                  <input placeholder="Full Address" className="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-[#1c6456]/20 focus:border-[#1c6456] outline-none" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                </div>
+                
+                {/* 🚨 NORMAL NUMBER INPUT FOR FLOORS 🚨 */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Number of Floors
+                  </label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    placeholder="e.g. 4" 
+                    className="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-[#1c6456]/20 focus:border-[#1c6456] outline-none" 
+                    value={formData.floors} 
+                    onChange={e => handleFloorsChange(e.target.value)}
+                    onBlur={() => {
+                       // Safety net: if they leave it totally empty, default back to 1
+                       if (!formData.floors || parseInt(formData.floors) < 1) handleFloorsChange(1);
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Default Base Rent (₹)</label>
+                  <input 
+                    type="number" 
+                    placeholder="e.g. 5000" 
+                    className="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-[#1c6456]/20 focus:border-[#1c6456] outline-none" 
+                    value={formData.defaultRent} 
+                    onChange={e => setFormData({...formData, defaultRent: e.target.value})} 
+                  />
+                </div>
 
                 <button 
                   onClick={() => setStep(2)} 
-                  disabled={!formData.name || !formData.address || formData.floors < 1}
-                  className="w-full bg-[#1c6456] text-white py-2 rounded disabled:opacity-50"
+                  disabled={!formData.name || !formData.address || parseInt(formData.floors) < 1}
+                  className="w-full bg-[#1c6456] text-white py-3 rounded-lg font-medium mt-2 disabled:opacity-50"
                 >
-                  Next
+                  Next: Configure Rooms
                 </button>
               </div>
             ) : (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                 {floorConfigs.map((config, i) => (
-                  <div key={i} className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Floor {i + 1} Rooms:</span>
-                    <input type="number" className="w-20 border p-2 rounded text-center" value={config.rooms}
+                  <div key={i} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <span className="text-sm font-bold text-gray-700">Floor {i + 1} Rooms:</span>
+                    
+                    {/* 🚨 NORMAL NUMBER INPUT FOR ROOMS PER FLOOR 🚨 */}
+                    <input 
+                      type="number" 
+                      min="1" 
+                      className="w-24 border border-gray-300 p-2 rounded-md text-center text-sm focus:ring-2 focus:ring-[#1c6456]/20 focus:border-[#1c6456] outline-none" 
+                      value={config.rooms || ''}
                       onChange={e => {
+                        const val = e.target.value;
                         const newConfigs = [...floorConfigs];
-                        newConfigs[i].rooms = parseInt(e.target.value) || 1;
+                        newConfigs[i].rooms = val === '' ? '' as any : parseInt(val);
                         setFloorConfigs(newConfigs);
-                      }} />
+                      }} 
+                      onBlur={() => {
+                        // Safety net: if left empty, default to 1 room
+                        if (!config.rooms || config.rooms < 1) {
+                           const newConfigs = [...floorConfigs];
+                           newConfigs[i].rooms = 1;
+                           setFloorConfigs(newConfigs);
+                        }
+                      }}
+                    />
                   </div>
                 ))}
-                <div className="pt-4 border-t flex gap-2">
-                  <button onClick={() => setStep(1)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded">Back</button>
+                <div className="pt-4 border-t flex gap-3">
+                  <button onClick={() => setStep(1)} className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2.5 rounded-lg font-medium transition-colors">Back</button>
                   <button 
                     onClick={handleCreateProperty} 
                     disabled={isCreating}
-                    className="flex-1 bg-[#1c6456] text-white py-2 rounded disabled:opacity-50"
+                    className="flex-1 bg-[#1c6456] hover:bg-[#144f43] text-white py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50"
                   >
-                    {isCreating ? 'Creating...' : 'Create Property'}
+                    {isCreating ? 'Creating...' : 'Finalize & Create'}
                   </button>
                 </div>
               </div>

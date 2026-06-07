@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import TenantRentalCard from '@/components/properties/tenant/TenantRentalCard';
 import PayRentModal from '@/components/properties/tenant/PayRentModal';
 import TenantLedgerModal from '@/components/properties/tenant/TenantLedgerModal';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function TenantPropertiesPage() {
   const [loading, setLoading] = useState(true);
@@ -21,7 +22,7 @@ const fetchRentalStatus = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch('http://localhost:5001/api/leases/me', {
+      const response = await fetch(`${API_URL}/leases/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

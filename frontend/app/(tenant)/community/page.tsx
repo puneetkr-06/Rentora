@@ -1,0 +1,184 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+
+export default function TenantCommunityPage() {
+  const [activeTab, setActiveTab] = useState<'notices' | 'maintenance'>('notices');
+  
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [myLeases, setMyLeases] = useState<any[]>([]); // NEW: To hold properties
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // NEW: Added lease_id to formData
+  const [formData, setFormData] = useState({ lease_id: '', title: '', description: '', category: 'PLUMBING', image_url: '' });
+
+  useEffect(() => {
+    const fetchComplaintsAndLeases = async () => {
+      try {
+        const token = localStorage.getItem('rentora_token');
+        
+        // Fetch Complaints
+        const resComplaints = await fetch(`${API_URL}/complaints/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dataComplaints = await resComplaints.json();
+        if (dataComplaints.status === 'success') setComplaints(dataComplaints.complaints);
+
+        // Fetch their active leases for the dropdown
+        const resLeases = await fetch(`${API_URL}/leases/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dataLeases = await resLeases.json();
+        if (dataLeases.status === 'success') setMyLeases(dataLeases.leases);
+
+      } catch (err) { console.error(err); } finally { setLoading(false); }
+    };
+    if (activeTab === 'maintenance') fetchComplaintsAndLeases();
+  }, [activeTab]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!supabase) return alert("Supabase not connected.");
+      if (!event.target.files || event.target.files.length === 0) return;
+      
+      setUploading(true);
+      const file = event.target.files[0];
+      const filePath = `complaints/${Math.random()}.${file.name.split('.').pop()}`; 
+
+      const { error } = await supabase.storage.from('rentora-files').upload(filePath, file);
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage.from('rentora-files').getPublicUrl(filePath);
+      setFormData({ ...formData, image_url: publicUrl });
+    } catch (error: any) { alert(`Upload Error: ${error.message}`); } finally { setUploading(false); }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const token = localStorage.getItem('rentora_token');
+      const res = await fetch(`${API_URL}/complaints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setShowModal(false);
+        setFormData({ lease_id: '', title: '', description: '', category: 'PLUMBING', image_url: '' });
+        
+        // Refresh complaints list
+        const refreshRes = await fetch(`${API_URL}/complaints/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const refreshData = await refreshRes.json();
+        if (refreshData.status === 'success') setComplaints(refreshData.complaints);
+      } else {
+        const errorData = await res.json();
+        alert("Error: " + errorData.error);
+      }
+    } catch (err) { console.error(err); } finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Community Hub</h1>
+        <p className="text-sm text-gray-500 mt-1">Connect with your building and report issues.</p>
+      </div>
+
+      <div className="flex border-b border-gray-200 gap-6">
+        <button onClick={() => setActiveTab('notices')} className={`pb-3 font-bold text-sm border-b-2 transition-colors ${activeTab === 'notices' ? 'border-[#1c6456] text-[#1c6456]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          📣 Notice Board
+        </button>
+        <button onClick={() => setActiveTab('maintenance')} className={`pb-3 font-bold text-sm border-b-2 transition-colors ${activeTab === 'maintenance' ? 'border-[#1c6456] text-[#1c6456]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          🛠️ Maintenance
+        </button>
+      </div>
+
+      {activeTab === 'notices' && (
+        <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
+          <span className="text-4xl">🏢</span>
+          <h3 className="text-lg font-bold text-gray-900 mt-4">Welcome to the Community</h3>
+          <p className="text-sm text-gray-500 mt-2">Any announcements from your landlord will appear here.</p>
+        </div>
+      )}
+
+      {activeTab === 'maintenance' && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => setShowModal(true)} className="bg-[#1c6456] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-[#144f43]">
+              + New Request
+            </button>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> : complaints.length === 0 ? <div className="p-12 text-center text-gray-500">No active maintenance requests.</div> : (
+              <div className="divide-y divide-gray-100">
+                {complaints.map((c) => (
+                  <div key={c.id} className="p-6 hover:bg-gray-50 flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded uppercase tracking-wider">{c.category}</span>
+                        <h3 className="font-bold text-gray-900">{c.title}</h3>
+                      </div>
+                      
+                      {/* NEW: Displaying the location of the complaint */}
+                      <p className="text-xs font-bold text-[#1c6456] mb-2 flex items-center gap-1">
+                        📍 {c.properties?.name} - {c.rooms?.room_number ? `Room ${c.rooms.room_number}` : c.clusters?.name ? `Cluster ${c.clusters.name}` : 'Unknown Unit'}
+                      </p>
+
+                      <p className="text-sm text-gray-600 max-w-xl">{c.description}</p>
+                      {c.image_url && <a href={c.image_url} target="_blank" className="text-xs font-bold text-[#1c6456] mt-2 block hover:underline">View Attached Photo ↗</a>}
+                    </div>
+                    <div>
+                      {c.status === 'PENDING' && <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold uppercase">Pending</span>}
+                      {c.status === 'IN_PROGRESS' && <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold uppercase">In Progress</span>}
+                      {c.status === 'RESOLVED' && <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase">Resolved</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl w-full max-w-md shadow-xl space-y-4">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="font-bold">Report an Issue</h2>
+              <button type="button" onClick={() => setShowModal(false)} className="text-gray-400">✕</button>
+            </div>
+
+            {/* 🚨 THE NEW TARGET PROPERTY DROPDOWN 🚨 */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Which property is this for?</label>
+              <select required className="w-full border p-2.5 rounded-lg text-sm bg-gray-50" value={formData.lease_id} onChange={e => setFormData({...formData, lease_id: e.target.value})}>
+                <option value="" disabled>Select your unit...</option>
+                {myLeases.map(lease => (
+                  <option key={lease.id} value={lease.id}>
+                    {lease.rooms?.properties?.name || lease.clusters?.properties?.name} - {lease.rooms?.room_number ? `Room ${lease.rooms.room_number}` : `Cluster ${lease.clusters?.name}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <input required type="text" placeholder="Issue Title" className="w-full border p-2.5 rounded-lg text-sm" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+            <select className="w-full border p-2.5 rounded-lg text-sm" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+              <option value="PLUMBING">Plumbing</option><option value="ELECTRICAL">Electrical</option><option value="GENERAL">General</option>
+            </select>
+            <textarea required rows={3} placeholder="Description..." className="w-full border p-2.5 rounded-lg text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+            <input type="file" accept="image/*" onChange={handleFileUpload} className="w-full border p-2 text-sm rounded-lg" />
+            <button type="submit" disabled={submitting || uploading} className="w-full bg-[#1c6456] text-white py-3 rounded-lg font-bold">Submit</button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}

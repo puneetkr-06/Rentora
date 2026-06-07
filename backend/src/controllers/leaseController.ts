@@ -9,34 +9,23 @@ const generateJoinId = () => {
 
 // --- 1. OWNER: CREATE A LEASE (Generates Join ID for Room or Cluster) ---
 export const createLease = async (req: AuthRequest, res: Response): Promise<any> => {
-  const { room_id, cluster_id, start_date, end_date, deposit_amount } = req.body;
-  const owner_id = req.user.id; 
+  // 1. Add rent_amount to your destructured req.body
+  const { room_id, cluster_id, start_date, end_date, deposit_amount, rent_amount } = req.body;
+  const owner_id = req.user.id;
 
-  // Must provide at least a room OR a cluster
   if ((!room_id && !cluster_id) || !start_date || deposit_amount === undefined) {
-    return res.status(400).json({ error: 'Room ID or Cluster ID, Start Date, and Deposit Amount are required.' });
+    return res.status(400).json({ error: 'Target ID, Start Date, and Deposit Amount are required.' });
   }
 
   try {
-    // Security Check: Verify the owner owns the targeted room or cluster
-    if (room_id) {
-      const { data: room, error: roomError } = await supabase
+    // ... [Keep your existing security verification checks here] ...
+    if (room_id && rent_amount !== undefined) {
+      const { error: roomUpdateError } = await supabase
         .from('rooms')
-        .select('id, properties(owner_id)')
-        .eq('id', room_id)
-        .single();
-      if (roomError || !room || (room.properties as any).owner_id !== owner_id) {
-        return res.status(403).json({ error: 'Unauthorized. You do not own this room.' });
-      }
-    } else if (cluster_id) {
-      const { data: cluster, error: clusterError } = await supabase
-        .from('clusters')
-        .select('id, properties(owner_id)')
-        .eq('id', cluster_id)
-        .single();
-      if (clusterError || !cluster || (cluster.properties as any).owner_id !== owner_id) {
-        return res.status(403).json({ error: 'Unauthorized. You do not own this cluster.' });
-      }
+        .update({ rent_amount: rent_amount })
+        .eq('id', room_id);
+      
+      if (roomUpdateError) throw roomUpdateError;
     }
 
     const join_id = generateJoinId();
@@ -71,6 +60,7 @@ export const createLease = async (req: AuthRequest, res: Response): Promise<any>
 };
 
 // --- 2. TENANT: JOIN VIA JOIN ID ---
+// --- 2. TENANT: JOIN A ROOM VIA JOIN ID ---
 export const joinLease = async (req: AuthRequest, res: Response): Promise<any> => {
   const { join_id } = req.body;
   const tenant_id = req.user.id;
@@ -80,38 +70,39 @@ export const joinLease = async (req: AuthRequest, res: Response): Promise<any> =
   }
 
   try {
-    // 1. Find the lease
+    // 1. Find the lease associated with this Join ID
     const { data: lease, error: leaseError } = await supabase
       .from('leases')
       .select('*')
       .eq('join_id', join_id)
       .single();
 
-    if (leaseError || !lease) return res.status(404).json({ error: 'Invalid Join ID. No lease found.' });
-    if (lease.tenant_id) return res.status(400).json({ error: 'This Join ID has already been claimed.' });
+    if (leaseError || !lease) throw new Error('Invalid Join Code. Please check and try again.');
+    
+    // 2. Check if it's already claimed
+    if (lease.tenant_id) throw new Error('This code has already been claimed by another tenant.');
 
-    // 2. Update the lease to assign the Tenant
-    const { error: updateLeaseError } = await supabase
+    // 3. 🚨 THE FIX: Claim the lease AND explicitly force the status to 'ACTIVE'
+    const { error: updateError } = await supabase
       .from('leases')
-      .update({ tenant_id: tenant_id })
+      .update({ 
+        tenant_id: tenant_id,
+        status: 'ACTIVE' // This ensures the Tenant Dashboard actually fetches it!
+      })
       .eq('id', lease.id);
 
-    if (updateLeaseError) throw updateLeaseError;
+    if (updateError) throw updateError;
 
-    // 3. Update the occupancy status based on whether it's a room or cluster
+    // 4. Update the Room or Cluster status to OCCUPIED
     if (lease.room_id) {
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('id', lease.room_id);
-    } else if (lease.cluster_id) {
+    }
+    if (lease.cluster_id) {
       await supabase.from('clusters').update({ status: 'OCCUPIED' }).eq('id', lease.cluster_id);
-      // Also mark all sub-rooms inside this cluster as occupied
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('cluster_id', lease.cluster_id);
     }
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Successfully joined the property!',
-      lease_id: lease.id
-    });
+    res.json({ status: 'success', message: 'Successfully joined property!' });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
   }

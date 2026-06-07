@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { createLease, joinLease, getMyLeases, assignExistingTenant } from '../controllers/leaseController';
+import { createLease, joinLease, getMyLeases, assignExistingTenant} from '../controllers/leaseController';
 import { requireAuth } from '../middleware/authMiddleware';
+
 
 const router = Router();
 

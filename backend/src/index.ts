@@ -8,6 +8,10 @@ import propertyRoutes from './routes/propertyRoutes';
 import roomRoutes from './routes/roomRoutes';
 import leaseRoutes from './routes/leaseRoutes';
 import userRoutes from './routes/userRoutes';
+import paymentRoutes from './routes/paymentRoutes';
+import noticeRoutes from './routes/noticeRoutes';
+import complaintRoutes from './routes/complaintRoutes';
+
 dotenv.config();
 
 const app = express();
@@ -21,6 +25,10 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/leases', leaseRoutes); // 2. Mount the lease routes
 app.use('/api/users', userRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/notices', noticeRoutes);
+app.use('/api/complaints', complaintRoutes);
+
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'success', message: 'Rentora API is running perfectly in TypeScript.' });

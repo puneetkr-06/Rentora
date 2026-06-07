@@ -20,14 +20,20 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<any> 
 
 // Update User Profile
 export const updateProfile = async (req: AuthRequest, res: Response): Promise<any> => {
-  // Destructure all the new fields from the request body
+  // Destructure all the fields from the request body, including the new file URLs
   const { 
     full_name, phone, gender, date_of_birth, 
     permanent_address, city, state, pin_code, 
     occupation_type, company_name, job_title, 
     emergency_contact_name, emergency_contact_relationship, emergency_contact_number, 
-    aadhaar_number 
+    aadhaar_number,
+    profile_photo, aadhaar_url // <-- Added the Supabase Storage URL fields
   } = req.body;
+
+  // Enforce that Full Name cannot be empty (compulsory)
+  if (!full_name || full_name.trim() === '') {
+    return res.status(400).json({ status: 'error', message: 'Full Name is strictly required and cannot be removed.' });
+  }
 
   try {
     const { data, error } = await supabase
@@ -37,7 +43,8 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<an
         permanent_address, city, state, pin_code, 
         occupation_type, company_name, job_title, 
         emergency_contact_name, emergency_contact_relationship, emergency_contact_number, 
-        aadhaar_number 
+        aadhaar_number,
+        profile_photo, aadhaar_url // <-- Added to the update payload
       })
       .eq('id', req.user.id)
       .select()

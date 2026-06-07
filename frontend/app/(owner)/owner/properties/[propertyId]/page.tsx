@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Import our new cleanly separated components
 import RoomCard from '@/components/properties/owner/RoomCard';
@@ -46,7 +47,7 @@ export default function RoomManagementPage() {
   const fetchRooms = async () => {
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`http://localhost:5001/api/rooms/${propertyId}`, {
+      const response = await fetch(`${API_URL}/rooms/${propertyId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -98,7 +99,8 @@ export default function RoomManagementPage() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           room_id: selectedRoom.id, start_date: new Date(rentalData.startDate).toISOString(), 
-          deposit_amount: parseInt(rentalData.rentPrice) || 0, electricity_rate: parseFloat(rentalData.electricityRate) || null, initial_meter_reading: parseInt(rentalData.meterReading) || null
+          deposit_amount: parseInt(rentalData.rentPrice) || 0, electricity_rate: parseFloat(rentalData.electricityRate) || null, initial_meter_reading: parseInt(rentalData.meterReading) || null,
+          rent_amount: parseInt(rentalData.rentPrice) || 0
         })
       });
       const data = await response.json();

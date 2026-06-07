@@ -1,10 +1,13 @@
 import { Router } from 'express';
-import { getProfile, updateProfile } from '../controllers/userController';
 import { requireAuth } from '../middleware/authMiddleware';
+import { getProfile, updateProfile } from '../controllers/userController';
 
 const router = Router();
 
-router.get('/me', requireAuth, getProfile);
-router.put('/me', requireAuth, updateProfile);
+// Fetching the profile uses GET
+router.get('/profile', requireAuth, getProfile);
+
+// Updating the profile MUST use PUT
+router.put('/profile', requireAuth, updateProfile);
 
 export default router;
