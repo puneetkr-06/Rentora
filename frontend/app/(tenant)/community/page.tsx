@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import NoticeBoardWidget from '@/components/dashboard/tenant/NoticeBoardWidget';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -166,10 +167,8 @@ alert("Error: " + (errorData.error || errorData.message || "Unknown error occurr
       </div>
 
       {activeTab === 'notices' && (
-        <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
-          <span className="text-4xl">🏢</span>
-          <h3 className="text-lg font-bold text-gray-900 mt-4">Welcome to the Community</h3>
-          <p className="text-sm text-gray-500 mt-2">Any announcements from your landlord will appear here.</p>
+        <div>
+          <NoticeBoardWidget />
         </div>
       )}
 
