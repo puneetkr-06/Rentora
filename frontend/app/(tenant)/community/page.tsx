@@ -18,45 +18,96 @@ export default function TenantCommunityPage() {
   const [uploading, setUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAuthFailure = () => {
+    localStorage.removeItem('rentora_token');
+    localStorage.removeItem('rentora_user');
+    window.location.href = '/login';
+  };
   
   // NEW: Added lease_id to formData
-  const [formData, setFormData] = useState({ lease_id: '', title: '', description: '', category: 'PLUMBING', image_url: '' });
+  const [formData, setFormData] = useState({ lease_id: '', title: '', description: '', category: 'MEDIUM', image_url: '' });
 
-  useEffect(() => {
+ useEffect(() => {
     const fetchComplaintsAndLeases = async () => {
+      setLoading(true);
       try {
         const token = localStorage.getItem('rentora_token');
         
-        // Fetch Complaints
-        const resComplaints = await fetch(`${API_URL}/complaints/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dataComplaints = await resComplaints.json();
-        if (dataComplaints.status === 'success') setComplaints(dataComplaints.complaints);
+        // --- 1. SAFE FETCH COMPLAINTS ---
+        const url1 = `${API_URL}/complaints/tenant`;
+        console.log("Fetching Complaints from:", url1);
+        const resComplaints = await fetch(url1, { headers: { 'Authorization': `Bearer ${token}` } });
 
-        // Fetch their active leases for the dropdown
-        const resLeases = await fetch(`${API_URL}/leases/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dataLeases = await resLeases.json();
-        if (dataLeases.status === 'success') setMyLeases(dataLeases.leases);
+          if (resComplaints.status === 401 || resComplaints.status === 403) {
+            handleAuthFailure();
+            return;
+          }
+        
+        // If it's an HTML error page, catch it before it crashes!
+        if (!resComplaints.ok) {
+           const errText = await resComplaints.text();
+           console.error("❌ Complaints API Failed:", resComplaints.status, errText.substring(0, 100));
+        } else {
+           const dataComplaints = await resComplaints.json();
+           if (dataComplaints.status === 'success') setComplaints(dataComplaints.complaints);
+        }
 
-      } catch (err) { console.error(err); } finally { setLoading(false); }
+        // --- 2. SAFE FETCH LEASES ---
+        const url2 = `${API_URL}/leases/tenant`;
+        console.log("Fetching Leases from:", url2);
+        const resLeases = await fetch(url2, { headers: { 'Authorization': `Bearer ${token}` } });
+
+          if (resLeases.status === 401 || resLeases.status === 403) {
+            handleAuthFailure();
+            return;
+          }
+        
+        // Catch HTML errors here too!
+        if (!resLeases.ok) {
+           const errText = await resLeases.text();
+           console.error("❌ Leases API Failed:", resLeases.status, errText.substring(0, 100));
+        } else {
+           const dataLeases = await resLeases.json();
+           if (dataLeases.status === 'success') setMyLeases(dataLeases.leases);
+        }
+
+      } catch (err) { 
+        console.error("Network or parsing error:", err); 
+      } finally { 
+        setLoading(false); 
+      }
     };
+
     if (activeTab === 'maintenance') fetchComplaintsAndLeases();
   }, [activeTab]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // 1. Safely grab the file first
+    const file = event.target.files?.[0];
+
+    // 2. If the user clicked "Cancel" or no file exists, silently stop without crashing!
+    if (!file) return;
+
     try {
       if (!supabase) return alert("Supabase not connected.");
-      if (!event.target.files || event.target.files.length === 0) return;
       
       setUploading(true);
-      const file = event.target.files[0];
-      const filePath = `complaints/${Math.random()}.${file.name.split('.').pop()}`; 
+      
+      // 3. 🚨 THE FIX: Bulletproof string splitting with a fallback
+      const fileExt = file.name ? file.name.split('.').pop() : 'png';
+      const filePath = `complaints/${Math.random()}.${fileExt}`; 
 
       const { error } = await supabase.storage.from('rentora-files').upload(filePath, file);
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage.from('rentora-files').getPublicUrl(filePath);
       setFormData({ ...formData, image_url: publicUrl });
-    } catch (error: any) { alert(`Upload Error: ${error.message}`); } finally { setUploading(false); }
+    } catch (error: any) { 
+      alert(`Upload Error: ${error.message}`); 
+    } finally { 
+      setUploading(false); 
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,9 +120,14 @@ export default function TenantCommunityPage() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(formData)
       });
+
+      if (res.status === 401 || res.status === 403) {
+        handleAuthFailure();
+        return;
+      }
       if (res.ok) {
         setShowModal(false);
-        setFormData({ lease_id: '', title: '', description: '', category: 'PLUMBING', image_url: '' });
+        setFormData({ lease_id: '', title: '', description: '', category: 'MEDIUM', image_url: '' });
         
         // Refresh complaints list
         const refreshRes = await fetch(`${API_URL}/complaints/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -79,7 +135,8 @@ export default function TenantCommunityPage() {
         if (refreshData.status === 'success') setComplaints(refreshData.complaints);
       } else {
         const errorData = await res.json();
-        alert("Error: " + errorData.error);
+
+alert("Error: " + (errorData.error || errorData.message || "Unknown error occurred"));
       }
     } catch (err) { console.error(err); } finally { setSubmitting(false); }
   };
@@ -129,7 +186,7 @@ export default function TenantCommunityPage() {
                       
                       {/* NEW: Displaying the location of the complaint */}
                       <p className="text-xs font-bold text-[#1c6456] mb-2 flex items-center gap-1">
-                        📍 {c.properties?.name} - {c.rooms?.room_number ? `Room ${c.rooms.room_number}` : c.clusters?.name ? `Cluster ${c.clusters.name}` : 'Unknown Unit'}
+                        📍 {c.rooms?.properties?.name || c.clusters?.properties?.name} - {c.rooms?.room_number ? `Room ${c.rooms.room_number}` : c.clusters?.name ? `Cluster ${c.clusters.name}` : 'Unknown Unit'}
                       </p>
 
                       <p className="text-sm text-gray-600 max-w-xl">{c.description}</p>
@@ -171,7 +228,7 @@ export default function TenantCommunityPage() {
 
             <input required type="text" placeholder="Issue Title" className="w-full border p-2.5 rounded-lg text-sm" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
             <select className="w-full border p-2.5 rounded-lg text-sm" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-              <option value="PLUMBING">Plumbing</option><option value="ELECTRICAL">Electrical</option><option value="GENERAL">General</option>
+              <option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option>
             </select>
             <textarea required rows={3} placeholder="Description..." className="w-full border p-2.5 rounded-lg text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
             <input type="file" accept="image/*" onChange={handleFileUpload} className="w-full border p-2 text-sm rounded-lg" />

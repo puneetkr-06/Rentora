@@ -20,14 +20,25 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<any> 
 
 // Update User Profile
 export const updateProfile = async (req: AuthRequest, res: Response): Promise<any> => {
-  // Destructure all the fields from the request body, including the new file URLs
-  const { 
-    full_name, phone, gender, date_of_birth, 
-    permanent_address, city, state, pin_code, 
-    occupation_type, company_name, job_title, 
-    emergency_contact_name, emergency_contact_relationship, emergency_contact_number, 
+  // Destructure the fields that can be updated from either tenant or owner profile forms.
+  const {
+    full_name,
+    phone,
+    gender,
+    date_of_birth,
+    permanent_address,
+    city,
+    state,
+    pin_code,
+    occupation_type,
+    company_name,
+    job_title,
+    emergency_contact_name,
+    emergency_contact_relationship,
+    emergency_contact_number,
     aadhaar_number,
-    profile_photo, aadhaar_url // <-- Added the Supabase Storage URL fields
+    profile_photo,
+    aadhaar_url,
   } = req.body;
 
   // Enforce that Full Name cannot be empty (compulsory)
@@ -36,16 +47,31 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<an
   }
 
   try {
+    const updatePayload = Object.fromEntries(
+      Object.entries({
+        full_name,
+        phone,
+        gender,
+        date_of_birth,
+        permanent_address,
+        city,
+        state,
+        pin_code,
+        occupation_type,
+        company_name,
+        job_title,
+        emergency_contact_name,
+        emergency_contact_relationship,
+        emergency_contact_number,
+        aadhaar_number,
+        profile_photo,
+        aadhaar_url,
+      }).filter(([, value]) => value !== undefined)
+    );
+
     const { data, error } = await supabase
       .from('users')
-      .update({ 
-        full_name, phone, gender, date_of_birth, 
-        permanent_address, city, state, pin_code, 
-        occupation_type, company_name, job_title, 
-        emergency_contact_name, emergency_contact_relationship, emergency_contact_number, 
-        aadhaar_number,
-        profile_photo, aadhaar_url // <-- Added to the update payload
-      })
+      .update(updatePayload)
       .eq('id', req.user.id)
       .select()
       .single();

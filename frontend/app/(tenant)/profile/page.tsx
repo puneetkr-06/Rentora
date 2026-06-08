@@ -13,7 +13,7 @@ export default function TenantProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingId, setUploadingId] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hardcoded to strictly guarantee it hits your backend and stops the '<' HTML error!
@@ -35,7 +35,7 @@ export default function TenantProfilePage() {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
-        
+
         if (data.status === 'success' && data.user) {
           // Prevent React crashes by converting 'null' database values to empty strings
           const safeData = Object.fromEntries(
@@ -60,12 +60,12 @@ export default function TenantProfilePage() {
 
       if (!event.target.files || event.target.files.length === 0) return;
       const file = event.target.files[0];
-      
+
       type === 'avatar' ? setUploadingAvatar(true) : setUploadingId(true);
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${type}s/${fileName}`; 
+      const filePath = `${type}s/${fileName}`;
 
       const { error: uploadError } = await supabase.storage.from('rentora-files').upload(filePath, file);
       if (uploadError) throw uploadError;
@@ -85,24 +85,24 @@ export default function TenantProfilePage() {
     }
   };
 
-const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.full_name || !formData.full_name.trim()) {
       return alert("Full Name is strictly required!");
     }
-    
+
     setSaving(true);
     try {
       const token = localStorage.getItem('rentora_token');
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
       // 🚨 THE FIX: The Data Scrubber
-      // Loop through every single field in the form. 
+      // Loop through every single field in the form.
       // If the field is an empty string, convert it to a true SQL 'null'.
       const payloadToSave: any = { ...formData };
       Object.keys(payloadToSave).forEach(key => {
         if (payloadToSave[key] === '') {
-          payloadToSave[key] = null; 
+          payloadToSave[key] = null;
         }
       });
 
@@ -111,9 +111,9 @@ const handleSave = async (e: React.FormEvent) => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payloadToSave)
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         alert("Profile updated successfully!");
       } else {
@@ -137,7 +137,7 @@ const handleSave = async (e: React.FormEvent) => {
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
-        
+
         {/* AVATAR SECTION */}
         <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm flex flex-col items-center justify-center">
           <div className="relative group">
@@ -148,8 +148,8 @@ const handleSave = async (e: React.FormEvent) => {
                 <svg className="w-12 h-12 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               )}
             </div>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
               className="absolute bottom-0 right-0 bg-white text-gray-500 p-2 rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-700 transition-colors disabled:opacity-50"
@@ -281,11 +281,11 @@ const handleSave = async (e: React.FormEvent) => {
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Upload ID Document</label>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 onChange={(e) => handleFileUpload(e, 'document')}
                 disabled={uploadingId}
-                className="w-full border border-gray-200 p-2 text-sm rounded-lg file:mr-4 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer transition-colors" 
+                className="w-full border border-gray-200 p-2 text-sm rounded-lg file:mr-4 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer transition-colors"
               />
               {uploadingId && <p className="text-xs text-gray-500 mt-2 flex items-center gap-2"><span className="block w-3 h-3 rounded-full border-2 border-gray-300 border-t-[#1c6456] animate-spin"></span> Uploading to secure vault...</p>}
             </div>

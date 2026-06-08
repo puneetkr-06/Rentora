@@ -12,7 +12,7 @@ export default function NoticeBoardWidget() {
         const token = localStorage.getItem('rentora_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
-        const res = await fetch(`${API_URL}/notices/me`, {
+        const res = await fetch(`${API_URL}/notices/tenant`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         

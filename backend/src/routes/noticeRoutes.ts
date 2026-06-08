@@ -8,6 +8,6 @@ const router = Router();
 router.post('/create', requireAuth, createNotice);
 
 // Tenant route
-router.get('/me', requireAuth, getTenantNotices);
+router.get('/tenant', requireAuth, getTenantNotices);
 
 export default router;

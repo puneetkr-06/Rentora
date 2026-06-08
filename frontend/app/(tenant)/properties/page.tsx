@@ -22,7 +22,7 @@ const fetchRentalStatus = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/leases/me`, {
+      const response = await fetch(`${API_URL}/leases/tenant`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

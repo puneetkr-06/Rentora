@@ -15,7 +15,7 @@ export default function TenantDashboardOverview() {
     const fetchRentalStatus = async () => {
       try {
         const token = localStorage.getItem('rentora_token');
-        const response = await fetch('http://localhost:5001/api/leases/me', {
+        const response = await fetch('http://localhost:5001/api/leases/tenant', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         

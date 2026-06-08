@@ -2,6 +2,14 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import supabase from '../config/supabase';
 
+const normalizeComplaint = (complaint: any) => ({
+  ...complaint,
+  category: complaint?.priority ?? complaint?.category,
+  image_url: Array.isArray(complaint?.media_urls)
+    ? complaint.media_urls[0] ?? null
+    : complaint?.media_urls ?? complaint?.image_url ?? null,
+});
+
 // --- 1. TENANT: CREATE A COMPLAINT ---
 export const createComplaint = async (req: AuthRequest, res: Response): Promise<any> => {
   const { title, description, category, image_url, lease_id } = req.body;
@@ -13,36 +21,30 @@ export const createComplaint = async (req: AuthRequest, res: Response): Promise<
     // 1. Look up the specific lease the tenant selected
     const { data: lease } = await supabase
       .from('leases')
-      .select('room_id, cluster_id, rooms(property_id), clusters(property_id)')
+      .select('room_id, cluster_id')
       .eq('id', lease_id)
       .eq('tenant_id', tenant_id)
       .single();
 
     if (!lease) return res.status(403).json({ error: 'Invalid lease selection.' });
 
-    // 2. Safely extract property_id (handling TypeScript arrays vs objects)
-    const roomPropId = Array.isArray(lease.rooms) ? lease.rooms[0]?.property_id : (lease.rooms as any)?.property_id;
-    const clusterPropId = Array.isArray(lease.clusters) ? lease.clusters[0]?.property_id : (lease.clusters as any)?.property_id;
-    const extractedPropertyId = roomPropId || clusterPropId;
-
     const { data, error } = await supabase
       .from('complaints')
       .insert([{
         tenant_id,
-        property_id: extractedPropertyId,
         room_id: lease.room_id,
         cluster_id: lease.cluster_id,
         title,
         description,
-        category,
-        image_url,
-        status: 'PENDING'
+        priority: category,
+        media_urls: image_url ? [image_url] : [],
+        status: 'OPEN'
       }])
       .select()
       .single();
 
     if (error) throw error;
-    res.json({ status: 'success', complaint: data });
+    res.json({ status: 'success', complaint: normalizeComplaint(data) });
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -53,12 +55,12 @@ export const getTenantComplaints = async (req: AuthRequest, res: Response): Prom
   try {
     const { data: complaints, error } = await supabase
       .from('complaints')
-      .select('*, properties(name), rooms(room_number), clusters(name)') // Added clusters
+      .select('*, rooms(room_number, properties(name)), clusters(name, properties(name))')
       .eq('tenant_id', req.user.id)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json({ status: 'success', complaints });
+    res.json({ status: 'success', complaints: (complaints || []).map(normalizeComplaint) });
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -72,14 +74,32 @@ export const getOwnerComplaints = async (req: AuthRequest, res: Response): Promi
 
     if (propertyIds.length === 0) return res.json({ status: 'success', complaints: [] });
 
-    const { data: complaints, error } = await supabase
-      .from('complaints')
-      .select('*, users(full_name, phone), properties(name), rooms(room_number), clusters(name)') // Added clusters
-      .in('property_id', propertyIds)
-      .order('created_at', { ascending: false });
+    const { data: rooms } = await supabase.from('rooms').select('id').in('property_id', propertyIds);
+    const { data: clusters } = await supabase.from('clusters').select('id').in('property_id', propertyIds);
+
+    const roomIds = rooms?.map(room => room.id) || [];
+    const clusterIds = clusters?.map(cluster => cluster.id) || [];
+
+    const complaintSelect = '*, users(full_name, phone), rooms(room_number, properties(name)), clusters(name, properties(name))';
+
+    const [roomComplaintsResult, clusterComplaintsResult] = await Promise.all([
+      roomIds.length
+        ? supabase.from('complaints').select(complaintSelect).in('room_id', roomIds).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null as any }),
+      clusterIds.length
+        ? supabase.from('complaints').select(complaintSelect).in('cluster_id', clusterIds).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null as any }),
+    ]);
+
+    const error = roomComplaintsResult.error || clusterComplaintsResult.error;
+    const complaints = [...(roomComplaintsResult.data || []), ...(clusterComplaintsResult.data || [])];
 
     if (error) throw error;
-    res.json({ status: 'success', complaints });
+
+    const dedupedComplaints = Array.from(new Map(complaints.map(complaint => [complaint.id, complaint])).values())
+      .map(normalizeComplaint);
+
+    res.json({ status: 'success', complaints: dedupedComplaints });
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -99,7 +119,7 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response): Pr
       .single();
 
     if (error) throw error;
-    res.json({ status: 'success', complaint: data });
+    res.json({ status: 'success', complaint: normalizeComplaint(data) });
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }

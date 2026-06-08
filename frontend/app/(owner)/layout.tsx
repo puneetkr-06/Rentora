@@ -16,6 +16,7 @@ export default function OwnerLayout({
     { name: 'Properties', href: '/owner/properties', icon: BuildingIcon },
     { name: 'Billing', href: '/owner/billing', icon: CreditCardIcon },
     { name: 'Community', href: '/owner/community', icon: MessageSquareIcon },
+    { name: 'Profile', href: '/owner/profile', icon: UserIcon },
   ];
 
   // Dynamically set titles to match your design screens
@@ -23,6 +24,7 @@ export default function OwnerLayout({
     if (pathname.includes('/properties')) return 'Property operations';
     if (pathname.includes('/billing')) return 'Rent collection';
     if (pathname.includes('/community')) return 'Community moderation';
+    if (pathname.includes('/profile')) return 'Owner profile';
     return 'Owner command center';
   };
 
