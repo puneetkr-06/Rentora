@@ -10,22 +10,29 @@ export default function TenantDashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [rentals, setRentals] = useState<any[]>([]);
   const [totalRent, setTotalRent] = useState(0);
+  const [openComplaints, setOpenComplaints] = useState(0);
 
   useEffect(() => {
     const fetchRentalStatus = async () => {
       try {
         const token = localStorage.getItem('rentora_token');
-        const response = await fetch('http://localhost:5001/api/leases/tenant', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const [leaseResponse, complaintResponse] = await Promise.all([
+          fetch('http://localhost:5001/api/leases/tenant', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('http://localhost:5001/api/complaints/tenant', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
         
-        if (response.status === 401 || response.status === 403) {
+        if (leaseResponse.status === 401 || leaseResponse.status === 403) {
           localStorage.removeItem('rentora_token');
           window.location.href = '/login';
           return;
         }
 
-        const data = await response.json();
+        const data = await leaseResponse.json();
+        const complaintData = await complaintResponse.json();
         
         if (data.hasLeases && data.leases.length > 0) {
           setRentals(data.leases);
@@ -33,6 +40,10 @@ export default function TenantDashboardOverview() {
           // Dynamically calculate the total monthly rent across all units
           const calculatedTotal = data.leases.reduce((sum: number, lease: any) => sum + (lease.deposit_amount || 0), 0);
           setTotalRent(calculatedTotal);
+        }
+
+        if (complaintData.status === 'success') {
+          setOpenComplaints((complaintData.complaints || []).filter((complaint: any) => complaint.status === 'OPEN').length);
         }
       } catch (err) {
         console.error("Error loading dashboard:", err);
@@ -71,7 +82,7 @@ export default function TenantDashboardOverview() {
         // DASHBOARD CONTENT
         <>
           {/* TOP METRICS */}
-          <TenantMetrics totalRent={totalRent} activeRentalsCount={rentals.length} />
+          <TenantMetrics totalRent={totalRent} activeRentalsCount={rentals.length} openComplaints={openComplaints} />
 
           {/* SPLIT WIDGET GRID */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">

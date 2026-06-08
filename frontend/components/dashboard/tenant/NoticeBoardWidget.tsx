@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function NoticeBoardWidget() {
   const [notices, setNotices] = useState<any[]>([]);
@@ -78,9 +79,9 @@ export default function NoticeBoardWidget() {
 
       <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-xl">
         <p className="text-xs text-gray-500 mb-3 text-center">Facing an issue in your room?</p>
-        <button className="w-full bg-white border border-[#1c6456] text-[#1c6456] hover:bg-[#1c6456] hover:text-white py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+        <Link href="/community?tab=maintenance" className="block w-full bg-white border border-[#1c6456] text-[#1c6456] hover:bg-[#1c6456] hover:text-white py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm text-center">
           Raise a Complaint
-        </button>
+        </Link>
       </div>
     </div>
   );

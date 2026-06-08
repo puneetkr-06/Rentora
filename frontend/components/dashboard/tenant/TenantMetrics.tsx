@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 
-export default function TenantMetrics({ totalRent, activeRentalsCount }: any) {
+export default function TenantMetrics({ totalRent, activeRentalsCount, openComplaints }: any) {
   const [pendingDues, setPendingDues] = useState<number | null>(null);
 
   useEffect(() => {
@@ -54,11 +54,11 @@ export default function TenantMetrics({ totalRent, activeRentalsCount }: any) {
         </p>
       </div>
 
-      {/* 3. COMPLAINTS (Placeholder for next feature) */}
+      {/* 3. COMPLAINTS */}
       <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Active Complaints</p>
-        <h3 className="text-3xl font-bold text-gray-900">0</h3>
-        <p className="text-xs text-gray-400 mt-2">No open maintenance tickets</p>
+        <h3 className="text-3xl font-bold text-gray-900">{openComplaints ?? 0}</h3>
+        <p className="text-xs text-gray-400 mt-2">{openComplaints > 0 ? 'Open maintenance tickets' : 'No open maintenance tickets'}</p>
       </div>
     </div>
   );

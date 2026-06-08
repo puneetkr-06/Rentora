@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -9,7 +10,8 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 export default function TenantCommunityPage() {
-  const [activeTab, setActiveTab] = useState<'notices' | 'maintenance'>('notices');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'notices' | 'maintenance'>(searchParams.get('tab') === 'maintenance' ? 'maintenance' : 'notices');
   
   const [complaints, setComplaints] = useState<any[]>([]);
   const [myLeases, setMyLeases] = useState<any[]>([]); // NEW: To hold properties
@@ -27,6 +29,12 @@ export default function TenantCommunityPage() {
   
   // NEW: Added lease_id to formData
   const [formData, setFormData] = useState({ lease_id: '', title: '', description: '', category: 'MEDIUM', image_url: '' });
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'maintenance') {
+      setActiveTab('maintenance');
+    }
+  }, [searchParams]);
 
  useEffect(() => {
     const fetchComplaintsAndLeases = async () => {
