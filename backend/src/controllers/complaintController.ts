@@ -8,6 +8,14 @@ const normalizeComplaint = (complaint: any) => ({
   image_url: Array.isArray(complaint?.media_urls)
     ? complaint.media_urls[0] ?? null
     : complaint?.media_urls ?? complaint?.image_url ?? null,
+  properties: complaint?.properties ?? {
+    name:
+      complaint?.rooms?.properties?.name ??
+      complaint?.clusters?.properties?.name ??
+      complaint?.rooms?.properties?.[0]?.name ??
+      complaint?.clusters?.properties?.[0]?.name ??
+      null,
+  },
 });
 
 // --- 1. TENANT: CREATE A COMPLAINT ---

@@ -18,28 +18,39 @@ useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const token = localStorage.getItem('rentora_token');
-        const propResponse = await fetch('http://localhost:5001/api/properties', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
+        const [propResponse, complaintResponse] = await Promise.all([
+          fetch('http://localhost:5001/api/properties', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('http://localhost:5001/api/complaints/owner', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
         const propData = await propResponse.json();
-        
+        const complaintData = await complaintResponse.json();
+
         if (propData.status === 'success') {
           let total = 0;
           let occupied = 0;
-          let totalRevenue = 0; // New revenue tracker
-          
+          let totalRevenue = 0;
+
           propData.properties.forEach((property: any) => {
             total += property.total_rooms || 0;
             occupied += (property.total_rooms || 0) - (property.available_rooms || 0);
-            totalRevenue += property.property_revenue || 0; // Add up revenue from all properties
+            totalRevenue += property.property_revenue || 0;
           });
+
+          const openComplaints = complaintData.status === 'success'
+            ? (complaintData.complaints || []).filter((complaint: any) => complaint.status === 'OPEN').length
+            : 0;
 
           setMetrics(prev => ({
             ...prev,
             totalRooms: total,
             occupiedRooms: occupied,
-            monthlyRevenue: totalRevenue // Updates the dashboard instantly!
+            monthlyRevenue: totalRevenue,
+            openComplaints,
           }));
         }
       } catch (error) {
