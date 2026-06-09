@@ -2,6 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 
+// 1. Added Date Helpers
+const monthLabel = (date: Date) => date.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+
+const addMonths = (date: Date, months: number) => {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+};
+
 export default function OwnerBillingPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +37,40 @@ export default function OwnerBillingPage() {
     fetchPayments();
   }, []);
 
-  // 1. Extract Unique Property Names for the Dropdown Filter
+  // 2. Added the Billing Month Engine
+  const billingMonthByPaymentId = React.useMemo(() => {
+    const byLease: Record<string, any[]> = {};
+    const result: Record<string, string> = {};
+
+    for (const payment of payments) {
+      const leaseId = payment.invoices?.leases?.id;
+      if (!leaseId) {
+        const fallbackDate = payment.invoices?.due_date || payment.payment_date;
+        result[payment.id] = monthLabel(new Date(fallbackDate));
+        continue;
+      }
+
+      if (!byLease[leaseId]) byLease[leaseId] = [];
+      byLease[leaseId].push(payment);
+    }
+
+    Object.values(byLease).forEach((leasePayments) => {
+      const sortedAsc = [...leasePayments].sort(
+        (a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
+      );
+
+      const startDateStr = sortedAsc[0]?.invoices?.leases?.start_date;
+      const baseMonth = startDateStr ? new Date(startDateStr) : new Date(sortedAsc[0]?.invoices?.due_date || sortedAsc[0]?.payment_date);
+
+      sortedAsc.forEach((payment, index) => {
+        result[payment.id] = monthLabel(addMonths(baseMonth, index));
+      });
+    });
+
+    return result;
+  }, [payments]);
+
+  // Extract Unique Property Names for the Dropdown Filter
   const uniqueProperties = Array.from(new Set(payments.map(p => {
     const isCluster = !!p.invoices?.leases?.clusters;
     return isCluster 
@@ -36,7 +78,7 @@ export default function OwnerBillingPage() {
       : p.invoices?.leases?.rooms?.properties?.name;
   }))).filter(Boolean);
 
-  // 2. Apply the Filter
+  // Apply the Filter
   const filteredPayments = propertyFilter === 'ALL' 
     ? payments 
     : payments.filter(p => {
@@ -81,13 +123,15 @@ export default function OwnerBillingPage() {
                 <th className="p-4 font-semibold uppercase tracking-wider text-xs">Tenant</th>
                 <th className="p-4 font-semibold uppercase tracking-wider text-xs">Unit</th>
                 <th className="p-4 font-semibold uppercase tracking-wider text-xs">Property</th>
+                {/* 3. Added Billing Month Header */}
+                <th className="p-4 font-semibold uppercase tracking-wider text-xs">Billing Month</th>
                 <th className="p-4 font-semibold uppercase tracking-wider text-xs">Amount</th>
                 <th className="p-4 font-semibold uppercase tracking-wider text-xs">Date Paid</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredPayments.length === 0 ? (
-                <tr><td colSpan={5} className="p-8 text-center text-gray-500">No payments found matching criteria.</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-gray-500">No payments found matching criteria.</td></tr>
               ) : (
                 filteredPayments.map((payment) => {
                   const isCluster = !!payment.invoices?.leases?.clusters;
@@ -98,12 +142,17 @@ export default function OwnerBillingPage() {
                     ? `Cluster: ${payment.invoices?.leases?.clusters?.name}`
                     : `Room: ${payment.invoices?.leases?.rooms?.room_number}`;
                   const tenantName = payment.invoices?.leases?.users?.full_name || 'Unknown Tenant';
+                  
+                  // 4. Extract the calculated Billing Month
+                  const billingMonth = billingMonthByPaymentId[payment.id] || 'N/A';
 
                   return (
                     <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
                       <td className="p-4 font-medium text-gray-900">{tenantName}</td>
                       <td className="p-4 text-gray-600">{unitName}</td>
                       <td className="p-4 text-gray-500">{propertyName || 'N/A'}</td>
+                      {/* 5. Added Billing Month Cell */}
+                      <td className="p-4 text-gray-800 font-medium">{billingMonth}</td>
                       <td className="p-4 font-bold text-green-700">₹{payment.amount_paid}</td>
                       <td className="p-4 text-gray-500">{new Date(payment.payment_date).toLocaleDateString()}</td>
                     </tr>
