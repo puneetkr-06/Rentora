@@ -2,6 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 
+const monthLabel = (date: Date) => date.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+
+const addMonths = (date: Date, months: number) => {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+};
+
 export default function TenantBillingPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +33,41 @@ export default function TenantBillingPage() {
     };
     fetchPayments();
   }, []);
+
+  // Billing month rule per lease:
+  // 1) first payment => lease start month
+  // 2) each next payment => previous billing month + 1
+  const billingMonthByPaymentId = React.useMemo(() => {
+    const byLease: Record<string, any[]> = {};
+    const result: Record<string, string> = {};
+
+    for (const payment of payments) {
+      const leaseId = payment.invoices?.leases?.id;
+      if (!leaseId) {
+        const fallbackDate = payment.invoices?.due_date || payment.payment_date;
+        result[payment.id] = monthLabel(new Date(fallbackDate));
+        continue;
+      }
+
+      if (!byLease[leaseId]) byLease[leaseId] = [];
+      byLease[leaseId].push(payment);
+    }
+
+    Object.values(byLease).forEach((leasePayments) => {
+      const sortedAsc = [...leasePayments].sort(
+        (a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
+      );
+
+      const startDateStr = sortedAsc[0]?.invoices?.leases?.start_date;
+      const baseMonth = startDateStr ? new Date(startDateStr) : new Date(sortedAsc[0]?.invoices?.due_date || sortedAsc[0]?.payment_date);
+
+      sortedAsc.forEach((payment, index) => {
+        result[payment.id] = monthLabel(addMonths(baseMonth, index));
+      });
+    });
+
+    return result;
+  }, [payments]);
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading payment history...</div>;
 
@@ -56,9 +99,7 @@ export default function TenantBillingPage() {
                   const propertyName = isCluster 
                     ? payment.invoices?.leases?.clusters?.properties?.name 
                     : payment.invoices?.leases?.rooms?.properties?.name;
-                  
-                  // Calculate the month they paid for based on the invoice due date
-                  const billingMonth = new Date(payment.invoices?.due_date).toLocaleDateString('default', { month: 'long', year: 'numeric' });
+                  const billingMonth = billingMonthByPaymentId[payment.id] || 'N/A';
 
                   return (
                     <tr key={payment.id} className="hover:bg-gray-50 transition-colors">

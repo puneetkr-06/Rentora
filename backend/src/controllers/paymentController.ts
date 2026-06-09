@@ -59,46 +59,57 @@ export const getLedger = async (req: AuthRequest, res: Response): Promise<any> =
 };
 
 // --- 3. OWNER: GET ALL PAYMENTS FOR ALL PROPERTIES ---
+// --- 3. OWNER: GET ALL PAYMENTS FOR ALL PROPERTIES ---
 export const getOwnerPayments = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
-    // 1. Get all properties owned by this user
-    const { data: properties } = await supabase
-      .from('properties')
-      .select('id, name')
-      .eq('owner_id', req.user.id);
-      
+    // 1. Get properties
+    const { data: properties } = await supabase.from('properties').select('id').eq('owner_id', req.user.id);
     const propertyIds = properties?.map(p => p.id) || [];
+    if (propertyIds.length === 0) return res.json({ status: 'success', payments: [] });
 
-    if (propertyIds.length === 0) {
-      return res.json({ status: 'success', payments: [] });
-    }
+    // 2. Get ALL active/past leases, and see which ones belong to this owner
+    const { data: leases } = await supabase
+      .from('leases')
+      .select('id, rooms(property_id), clusters(property_id)');
+      
+    // Filter down to only leases that belong to the owner's properties
+    const ownerLeaseIds = leases
+      ?.filter((l: any) => {
+        // Safe extraction handling both objects and arrays from Supabase
+        const roomPropId = Array.isArray(l.rooms) ? l.rooms[0]?.property_id : l.rooms?.property_id;
+        const clusterPropId = Array.isArray(l.clusters) ? l.clusters[0]?.property_id : l.clusters?.property_id;
+        return propertyIds.includes(roomPropId) || propertyIds.includes(clusterPropId);
+      })
+      .map(l => l.id) || [];
 
-    // 2. Fetch all payments with their deeply nested relations
+    if (ownerLeaseIds.length === 0) return res.json({ status: 'success', payments: [] });
+
+    // 3. Get invoices ONLY for those specific leases
+    const { data: invoices } = await supabase.from('invoices').select('id').in('lease_id', ownerLeaseIds);
+    const invoiceIds = invoices?.map(i => i.id) || [];
+
+    if (invoiceIds.length === 0) return res.json({ status: 'success', payments: [] });
+
+    // 4. SECURE FETCH: Get payments ONLY for those specific invoices
     const { data: payments, error } = await supabase
       .from('payments')
       .select(`
         id, amount_paid, payment_date, payment_method,
-        invoices:invoice_id (
+        invoices (
           due_date, type,
           leases (
+            id, start_date,
             users ( full_name ),
             rooms ( room_number, properties ( id, name ) ),
             clusters ( name, properties ( id, name ) )
           )
         )
       `)
+      .in('invoice_id', invoiceIds)
       .order('payment_date', { ascending: false });
 
     if (error) throw error;
-
-    // 3. Filter payments in JavaScript to ensure they belong to this owner's properties
-    const filteredPayments = payments.filter((payment: any) => {
-      const roomPropId = payment.invoices?.leases?.rooms?.properties?.id;
-      const clusterPropId = payment.invoices?.leases?.clusters?.properties?.id;
-      return propertyIds.includes(roomPropId) || propertyIds.includes(clusterPropId);
-    });
-
-    res.json({ status: 'success', payments: filteredPayments });
+    res.json({ status: 'success', payments });
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -127,6 +138,7 @@ export const getTenantPayments = async (req: AuthRequest, res: Response): Promis
         invoices:invoice_id (
           due_date, type,
           leases (
+            id, start_date,
             rooms ( properties ( name ) ),
             clusters ( properties ( name ) )
           )
@@ -144,8 +156,8 @@ export const getTenantPayments = async (req: AuthRequest, res: Response): Promis
 
 
 // --- 5. THE JIT INVOICE ENGINE (Auto-generates missed months) ---
+// --- 5. THE JIT INVOICE ENGINE ---
 const syncLeaseInvoices = async (leaseId: string) => {
-  // 1. Fetch lease and room details
   const { data: lease } = await supabase
     .from('leases')
     .select('*, rooms(rent_amount), clusters(rent_amount)')
@@ -154,8 +166,11 @@ const syncLeaseInvoices = async (leaseId: string) => {
 
   if (!lease || !lease.start_date) return;
 
-  // Safely find the rent amount
-  const rentAmount = lease.rent_amount || lease.rooms?.rent_amount || lease.clusters?.rent_amount || lease.deposit_amount || 0;
+  // 🚨 SAFE EXTRACTION: Checks if Supabase returned an Array or an Object
+  const roomRent = Array.isArray(lease.rooms) ? lease.rooms[0]?.rent_amount : lease.rooms?.rent_amount;
+  const clusterRent = Array.isArray(lease.clusters) ? lease.clusters[0]?.rent_amount : lease.clusters?.rent_amount;
+
+  const rentAmount = lease.rent_amount || roomRent || clusterRent || lease.deposit_amount || 0;
   
   const startDate = new Date(lease.start_date);
   const now = new Date();

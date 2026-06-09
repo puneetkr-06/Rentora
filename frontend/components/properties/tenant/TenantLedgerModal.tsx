@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+const toMonthLabel = (date: Date) => date.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+
+const addMonths = (date: Date, months: number) => {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+};
+
 export default function TenantLedgerModal({ isOpen, setIsOpen, rental }: any) {
   const [ledger, setLedger] = useState<any[]>([]);
 
@@ -17,6 +25,35 @@ export default function TenantLedgerModal({ isOpen, setIsOpen, rental }: any) {
       fetchLedger();
     }
   }, [isOpen, rental]);
+
+  const billingMonthByInvoiceId = React.useMemo(() => {
+    const result: Record<string, string> = {};
+    const rentInvoices = [...ledger]
+      .filter((inv: any) => inv.type === 'RENT')
+      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const baseDate = rental?.start_date
+      ? new Date(rental.start_date)
+      : rentInvoices[0]?.due_date
+        ? new Date(rentInvoices[0].due_date)
+        : rentInvoices[0]?.created_at
+          ? new Date(rentInvoices[0].created_at)
+          : new Date();
+
+    rentInvoices.forEach((inv: any, index: number) => {
+      result[inv.id] = toMonthLabel(addMonths(baseDate, index));
+    });
+
+    // Fallback for non-rent items.
+    ledger
+      .filter((inv: any) => inv.type !== 'RENT')
+      .forEach((inv: any) => {
+        const fallback = inv.due_date || inv.created_at;
+        result[inv.id] = toMonthLabel(new Date(fallback));
+      });
+
+    return result;
+  }, [ledger, rental?.start_date]);
 
   if (!isOpen) return null;
 
@@ -43,7 +80,7 @@ export default function TenantLedgerModal({ isOpen, setIsOpen, rental }: any) {
             <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
               <tr>
                 <th className="p-4 font-semibold">Type</th>
-                <th className="p-4 font-semibold">Billed On</th>
+                <th className="p-4 font-semibold">Billing Month</th>
                 <th className="p-4 font-semibold">Amount</th>
                 <th className="p-4 font-semibold">Status</th>
               </tr>
@@ -55,7 +92,7 @@ export default function TenantLedgerModal({ isOpen, setIsOpen, rental }: any) {
                 ledger.map((inv: any) => (
                   <tr key={inv.id}>
                     <td className="p-4 font-medium text-gray-900">{inv.type}</td>
-                    <td className="p-4 text-gray-500">{new Date(inv.created_at).toLocaleDateString()}</td>
+                    <td className="p-4 text-gray-500">{billingMonthByInvoiceId[inv.id] || 'N/A'}</td>
                     <td className="p-4 font-bold text-gray-900">₹{inv.amount}</td>
                     <td className="p-4">
                       <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded text-xs font-bold uppercase">
