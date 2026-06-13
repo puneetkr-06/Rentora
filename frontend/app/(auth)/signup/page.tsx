@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+// 1. Import your brand new Modal Component
+import HowItWorksModal from '@/components/auth/HowItWorksModal';
+
 export default function SignUpPage() {
   const router = useRouter();
   
@@ -16,6 +19,9 @@ export default function SignUpPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // 2. Add state to control the Tutorial Modal
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +29,10 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      // Send the data to your Express backend running on port 5000
-      const response = await fetch('http://localhost:5001/api/auth/signup', {
+      // Safely use environment variables for deployment
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+      
+      const response = await fetch(`${API_URL}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -52,12 +60,27 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 sm:p-8">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Create a new account</h2>
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 sm:p-8 relative">
+      
+      {/* 3. The newly designed Header area with the Modal Trigger Button */}
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Create a new account</h2>
+        
+        <button 
+          onClick={() => setIsTutorialOpen(true)}
+          type="button"
+          className="mt-2 text-sm text-[#1c6456] font-semibold hover:text-[#144f43] transition-colors flex items-center justify-center gap-1.5 mx-auto bg-green-50 px-3 py-1.5 rounded-full border border-green-100 hover:bg-green-100"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          First time here? See how Rentora works
+        </button>
+      </div>
       
       {/* Display errors if they occur */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg">
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg text-center font-medium">
           {error}
         </div>
       )}
@@ -143,6 +166,12 @@ export default function SignUpPage() {
           Sign in
         </Link>
       </div>
+
+      {/* 4. Mount the Modal so it pops up securely when triggered */}
+      <HowItWorksModal 
+        isOpen={isTutorialOpen} 
+        onClose={() => setIsTutorialOpen(false)} 
+      />
     </div>
   );
 }
