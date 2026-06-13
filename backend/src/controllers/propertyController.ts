@@ -79,3 +79,61 @@ export const deleteProperty = async (req: AuthRequest, res: Response): Promise<a
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
+
+// --- GET PROPERTY PERFORMANCE STATS ---
+export const getPropertyStats = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const ownerId = req.user.id;
+
+    // 1. Fetch all properties owned by the user
+    const { data: properties, error: propError } = await supabase
+      .from('properties')
+      .select('id, name')
+      .eq('owner_id', ownerId);
+
+    if (propError) throw propError;
+    if (!properties || properties.length === 0) return res.json({ status: 'success', stats: [] });
+
+    const propertyIds = properties.map(p => p.id);
+
+    // 2. Fetch all rooms belonging to those properties
+    const { data: rooms, error: roomError } = await supabase
+      .from('rooms')
+      .select('id, property_id, status, rent_amount')
+      .in('property_id', propertyIds);
+
+    if (roomError) throw roomError;
+
+    // 3. Calculate metrics per property
+    const stats = properties.map(property => {
+      // Find all rooms for this specific property
+      const propertyRooms = rooms?.filter(r => r.property_id === property.id) || [];
+      
+      const totalRooms = propertyRooms.length;
+      const occupiedRooms = propertyRooms.filter(r => r.status === 'OCCUPIED').length;
+      
+      // Sum the rent only for rooms that actually have tenants
+      const expectedRevenue = propertyRooms
+        .filter(r => r.status === 'OCCUPIED')
+        .reduce((sum, r) => sum + Number(r.rent_amount || 0), 0);
+
+      const occupancyPercentage = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+
+      return {
+        id: property.id,
+        name: property.name,
+        totalRooms,
+        occupiedRooms,
+        occupancyPercentage,
+        expectedRevenue
+      };
+    });
+
+    // 4. Sort properties by highest revenue first
+    stats.sort((a, b) => b.expectedRevenue - a.expectedRevenue);
+
+    res.json({ status: 'success', stats });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
