@@ -32,7 +32,7 @@ export default function SignUpPage() {
       // Safely use environment variables for deployment
       const API_URL = process.env.NEXT_PUBLIC_API_URL;
       
-      const response = await fetch(`${API_URL}/auth/signup`, {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

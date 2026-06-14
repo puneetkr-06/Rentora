@@ -27,9 +27,9 @@ export default function OwnerDashboard() {
 
         // 🚨 2. FETCH REAL PAYMENT METRICS ALONG WITH PROPERTIES & COMPLAINTS
         const [propResponse, complaintResponse, metricsResponse] = await Promise.all([
-          fetch(`${API_URL}/properties`, { headers }),
-          fetch(`${API_URL}/complaints/owner`, { headers }),
-          fetch(`${API_URL}/payments/owner-metrics`, { headers }).catch(() => null) 
+          fetch(`${API_URL}/api/properties`, { headers }),
+          fetch(`${API_URL}/api/complaints/owner`, { headers }),
+          fetch(`${API_URL}/api/payments/owner-metrics`, { headers }).catch(() => null) 
         ]);
 
         // 🚨 THE FIX IS HERE: Notice the ".ok" checks!

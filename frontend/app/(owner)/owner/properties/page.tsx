@@ -22,7 +22,7 @@ export default function PropertiesPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const res = await fetch(`${API_URL}/properties`, {
+      const res = await fetch(`${API_URL}/api/properties`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -66,7 +66,7 @@ export default function PropertiesPage() {
       const token = localStorage.getItem('rentora_token');
       
       // 1. Create Property
-      const propRes = await fetch(`${API_URL}/properties`, {
+      const propRes = await fetch(`${API_URL}/api/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ name: formData.name, address: formData.address })
@@ -80,7 +80,7 @@ export default function PropertiesPage() {
       // 2. Loop through floors and rooms to create them
       for (let f = 0; f < floorConfigs.length; f++) {
         for (let r = 0; r < floorConfigs[f].rooms; r++) {
-          const roomRes = await fetch(`${API_URL}/rooms`, {
+          const roomRes = await fetch(`${API_URL}/api/rooms`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({

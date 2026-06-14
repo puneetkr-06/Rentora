@@ -47,7 +47,7 @@ export default function RoomManagementPage() {
   const fetchRooms = async () => {
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/rooms/${propertyId}`, {
+      const response = await fetch(`${API_URL}/api/rooms/${propertyId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -94,7 +94,7 @@ export default function RoomManagementPage() {
   const handleUpdateRoom = async () => {
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/leases`, {
+      const response = await fetch(`${API_URL}/api/leases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -115,7 +115,7 @@ export default function RoomManagementPage() {
     setIsDeallocating(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/rooms/${selectedRoom.id}/deallocate`, {
+      const response = await fetch(`${API_URL}/api/rooms/${selectedRoom.id}/deallocate`, {
         method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) { setIsTenantModalOpen(false); fetchRooms(); }
@@ -127,7 +127,7 @@ export default function RoomManagementPage() {
     setIsDeletingRoom(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/rooms/${selectedRoom.id}`, {
+      const response = await fetch(`${API_URL}/api/rooms/${selectedRoom.id}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -143,10 +143,10 @@ export default function RoomManagementPage() {
     setIsDeletingProperty(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/properties/${propertyId}`, {
+      const response = await fetch(`${API_URL}/api/properties/${propertyId}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) { router.push('/owner/properties'); } 
+      if (response.ok) { router.push('/api/owner/properties'); } 
       else { const data = await response.json(); alert(data.error || "Failed to delete property."); }
     } catch (error) { console.error("Failed to delete property", error); } 
     finally { setIsDeletingProperty(false); }
@@ -157,7 +157,7 @@ export default function RoomManagementPage() {
     setIsAddingRoom(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/rooms`, {
+      const response = await fetch(`${API_URL}/api/rooms`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           property_id: propertyId, room_number: newRoomData.room_number, type: newRoomData.type,

@@ -25,7 +25,7 @@ export default function LedgerModal({ isOpen, setIsLedgerModalOpen, selectedRoom
       // 🚨 BUG 2 FIXED: Added try/catch so the UI can gracefully recover from errors
       try {
         const token = localStorage.getItem('rentora_token');
-        const res = await fetch(`${API_URL}/payments/ledger/${activeLease.id}`, {
+        const res = await fetch(`${API_URL}/api/payments/ledger/${activeLease.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         

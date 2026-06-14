@@ -19,7 +19,7 @@ export default function TenantBillingPage() {
       try {
         const token = localStorage.getItem('rentora_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
-        const res = await fetch(`${API_URL}/payments/tenant-history`, {
+        const res = await fetch(`${API_URL}/api/payments/tenant-history`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

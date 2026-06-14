@@ -22,7 +22,7 @@ const fetchRentalStatus = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/leases/tenant`, {
+      const response = await fetch(`${API_URL}/api/leases/tenant`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -58,7 +58,7 @@ const fetchRentalStatus = async () => {
 
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`${API_URL}/leases/join`, {
+      const response = await fetch(`${API_URL}/api/leases/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ join_id: joinCode.toUpperCase() })

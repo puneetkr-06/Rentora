@@ -44,7 +44,7 @@ function CommunityContent() {
         const token = localStorage.getItem('rentora_token');
         
         // --- 1. SAFE FETCH COMPLAINTS ---
-        const url1 = `${API_URL}/complaints/tenant`;
+        const url1 = `${API_URL}/api/complaints/tenant`;
         const resComplaints = await fetch(url1, { headers: { 'Authorization': `Bearer ${token}` } });
 
           if (resComplaints.status === 401 || resComplaints.status === 403) {
@@ -61,7 +61,7 @@ function CommunityContent() {
         }
 
         // --- 2. SAFE FETCH LEASES ---
-        const url2 = `${API_URL}/leases/tenant`;
+        const url2 = `${API_URL}/api/leases/tenant`;
         const resLeases = await fetch(url2, { headers: { 'Authorization': `Bearer ${token}` } });
 
           if (resLeases.status === 401 || resLeases.status === 403) {
@@ -116,7 +116,7 @@ function CommunityContent() {
     setSubmitting(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const res = await fetch(`${API_URL}/complaints`, {
+      const res = await fetch(`${API_URL}/api/complaints`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(formData)
@@ -131,7 +131,7 @@ function CommunityContent() {
         setFormData({ lease_id: '', title: '', description: '', category: 'MEDIUM', image_url: '' });
         
         // Refresh complaints list
-        const refreshRes = await fetch(`${API_URL}/complaints/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const refreshRes = await fetch(`${API_URL}/api/complaints/tenant`, { headers: { 'Authorization': `Bearer ${token}` } });
         const refreshData = await refreshRes.json();
         if (refreshData.status === 'success') setComplaints(refreshData.complaints);
       } else {

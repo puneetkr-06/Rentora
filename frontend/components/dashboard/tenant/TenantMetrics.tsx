@@ -10,7 +10,7 @@ export default function TenantMetrics({ totalRent, activeRentalsCount, openCompl
         const token = localStorage.getItem('rentora_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
         
-        const res = await fetch(`${API_URL}/payments/metrics/tenant`, {
+        const res = await fetch(`${API_URL}/api/payments/metrics/tenant`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

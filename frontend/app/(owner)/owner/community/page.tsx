@@ -24,7 +24,7 @@ export default function OwnerCommunityPage() {
     const fetchProperties = async () => {
       try {
         const token = localStorage.getItem('rentora_token');
-        const res = await fetch(`${API_URL}/properties`, {
+        const res = await fetch(`${API_URL}/api/properties`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -40,7 +40,7 @@ export default function OwnerCommunityPage() {
     const fetchComplaints = async () => {
       try {
         const token = localStorage.getItem('rentora_token');
-        const res = await fetch(`${API_URL}/complaints/owner`, { 
+        const res = await fetch(`${API_URL}/api/complaints/owner`, { 
           headers: { 'Authorization': `Bearer ${token}` } 
         });
         const data = await res.json();
@@ -62,7 +62,7 @@ export default function OwnerCommunityPage() {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const res = await fetch(`${API_URL}/notices/create`, {
+      const res = await fetch(`${API_URL}/api/notices/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(formData)
@@ -86,7 +86,7 @@ export default function OwnerCommunityPage() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       const token = localStorage.getItem('rentora_token');
-      const res = await fetch(`${API_URL}/complaints/${id}/status`, {
+      const res = await fetch(`${API_URL}/api/complaints/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })

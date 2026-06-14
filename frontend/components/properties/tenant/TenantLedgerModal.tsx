@@ -16,7 +16,7 @@ export default function TenantLedgerModal({ isOpen, setIsOpen, rental }: any) {
     if (isOpen && rental) {
       const fetchLedger = async () => {
         const token = localStorage.getItem('rentora_token');
-        const res = await fetch(`${API_URL}/payments/ledger/${rental.id}`, {
+        const res = await fetch(`${API_URL}/api/payments/ledger/${rental.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

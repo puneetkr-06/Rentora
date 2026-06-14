@@ -22,7 +22,7 @@ export default function OwnerBillingPage() {
         const token = localStorage.getItem('rentora_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
         
-        const res = await fetch(`${API_URL}/payments/owner-history`, {
+        const res = await fetch(`${API_URL}/api/payments/owner-history`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

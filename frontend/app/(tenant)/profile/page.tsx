@@ -31,7 +31,7 @@ export default function TenantProfilePage() {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('rentora_token');
-        const res = await fetch(`${API_URL}/users/profile`, {
+        const res = await fetch(`${API_URL}/api/users/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -106,7 +106,7 @@ export default function TenantProfilePage() {
         }
       });
 
-      const res = await fetch(`${API_URL}/users/profile`, {
+      const res = await fetch(`${API_URL}/api/users/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payloadToSave)

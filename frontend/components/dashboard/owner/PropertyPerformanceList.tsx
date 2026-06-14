@@ -13,7 +13,7 @@ export default function PropertyPerformanceList() {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('rentora_token');
-        const res = await fetch(`${API_URL}/properties/stats`, {
+        const res = await fetch(`${API_URL}/api/properties/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         

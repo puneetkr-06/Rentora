@@ -17,10 +17,10 @@ export default function TenantDashboardOverview() {
       try {
         const token = localStorage.getItem('rentora_token');
         const [leaseResponse, complaintResponse] = await Promise.all([
-          fetch(`${API_URL}/leases/tenant`, {
+          fetch(`${API_URL}/api/leases/tenant`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`${API_URL}/complaints/tenant`, {
+          fetch(`${API_URL}/api/complaints/tenant`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);
