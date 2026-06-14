@@ -146,7 +146,7 @@ export default function RoomManagementPage() {
       const response = await fetch(`${API_URL}/api/properties/${propertyId}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) { router.push('/api/owner/properties'); } 
+      if (response.ok) { router.push('/owner/properties'); } 
       else { const data = await response.json(); alert(data.error || "Failed to delete property."); }
     } catch (error) { console.error("Failed to delete property", error); } 
     finally { setIsDeletingProperty(false); }

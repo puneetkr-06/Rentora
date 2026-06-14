@@ -36,6 +36,10 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'success', message: 'Rentora API is running perfectly in TypeScript.' });
 });
 
+app.get('/', (req: Request, res: Response) => {
+  res.redirect('https://rentoramain.vercel.app/signup'); 
+});
+
 
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5001;
