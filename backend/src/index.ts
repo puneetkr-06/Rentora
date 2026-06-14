@@ -15,15 +15,13 @@ import complaintRoutes from './routes/complaintRoutes';
 dotenv.config();
 
 const app = express();
-app.use(cors({
+const corsOptions = {
   origin: ['http://localhost:3000', 'https://rentoramain.vercel.app'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  optionsSuccessStatus: 200 // Forces Vercel to accept the preflight check
-}));
-
-app.options('*', cors());
+  optionsSuccessStatus: 200 
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // Route Middleware
