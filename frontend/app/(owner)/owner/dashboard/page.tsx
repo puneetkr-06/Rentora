@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 // 🚨 1. IMPORT YOUR NEW COMPONENT HERE
 import PropertyPerformanceList from '@/components/dashboard/owner/PropertyPerformanceList';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function OwnerDashboard() {
   const [loading, setLoading] = useState(true);

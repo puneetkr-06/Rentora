@@ -94,7 +94,7 @@ export default function RoomManagementPage() {
   const handleUpdateRoom = async () => {
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch('http://localhost:5001/api/leases', {
+      const response = await fetch(`${API_URL}/leases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -115,7 +115,7 @@ export default function RoomManagementPage() {
     setIsDeallocating(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`http://localhost:5001/api/rooms/${selectedRoom.id}/deallocate`, {
+      const response = await fetch(`${API_URL}/rooms/${selectedRoom.id}/deallocate`, {
         method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) { setIsTenantModalOpen(false); fetchRooms(); }
@@ -127,7 +127,7 @@ export default function RoomManagementPage() {
     setIsDeletingRoom(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`http://localhost:5001/api/rooms/${selectedRoom.id}`, {
+      const response = await fetch(`${API_URL}/rooms/${selectedRoom.id}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -143,7 +143,7 @@ export default function RoomManagementPage() {
     setIsDeletingProperty(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch(`http://localhost:5001/api/properties/${propertyId}`, {
+      const response = await fetch(`${API_URL}/properties/${propertyId}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) { router.push('/owner/properties'); } 
@@ -157,7 +157,7 @@ export default function RoomManagementPage() {
     setIsAddingRoom(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch('http://localhost:5001/api/rooms', {
+      const response = await fetch(`${API_URL}/rooms`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           property_id: propertyId, room_number: newRoomData.room_number, type: newRoomData.type,

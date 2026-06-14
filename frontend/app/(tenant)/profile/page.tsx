@@ -17,7 +17,7 @@ export default function TenantProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hardcoded to strictly guarantee it hits your backend and stops the '<' HTML error!
-  const API_URL = 'http://localhost:5001/api';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;;
 
   const [formData, setFormData] = useState({
     full_name: '', email: '', phone: '', gender: '', date_of_birth: '',
@@ -94,7 +94,7 @@ export default function TenantProfilePage() {
     setSaving(true);
     try {
       const token = localStorage.getItem('rentora_token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
       // 🚨 THE FIX: The Data Scrubber
       // Loop through every single field in the form.

@@ -58,7 +58,7 @@ const fetchRentalStatus = async () => {
 
     try {
       const token = localStorage.getItem('rentora_token');
-      const response = await fetch('http://localhost:5001/api/leases/join', {
+      const response = await fetch(`${API_URL}/leases/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ join_id: joinCode.toUpperCase() })

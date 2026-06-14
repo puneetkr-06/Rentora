@@ -5,7 +5,7 @@ import TenantMetrics from '@/components/dashboard/tenant/TenantMetrics';
 import RentalSummaryWidget from '@/components/dashboard/tenant/RentalSummaryWidget';
 import NoticeBoardWidget from '@/components/dashboard/tenant/NoticeBoardWidget';
 import Link from 'next/link';
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export default function TenantDashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [rentals, setRentals] = useState<any[]>([]);
@@ -17,10 +17,10 @@ export default function TenantDashboardOverview() {
       try {
         const token = localStorage.getItem('rentora_token');
         const [leaseResponse, complaintResponse] = await Promise.all([
-          fetch('http://localhost:5001/api/leases/tenant', {
+          fetch(`${API_URL}/leases/tenant`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch('http://localhost:5001/api/complaints/tenant', {
+          fetch(`${API_URL}/complaints/tenant`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);

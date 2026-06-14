@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // 🚨 BUG 1 FIXED: Added the required fallback so it never fetches "undefined"
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const toMonthLabel = (date: Date) => date.toLocaleDateString('default', { month: 'long', year: 'numeric' });
 

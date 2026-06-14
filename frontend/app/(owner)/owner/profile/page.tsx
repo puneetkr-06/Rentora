@@ -6,7 +6,7 @@ export default function OwnerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const API_URL = 'http://localhost:5001/api';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const [formData, setFormData] = useState({
     full_name: '',
