@@ -20,6 +20,18 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200 
 };
+// Add this BEFORE all your route middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://rentoramain.vercel.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
