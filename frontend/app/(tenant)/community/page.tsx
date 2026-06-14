@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import NoticeBoardWidget from '@/components/dashboard/tenant/NoticeBoardWidget';
@@ -10,12 +10,13 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export default function TenantCommunityPage() {
+// 1. Rename the main function to a sub-component
+function CommunityContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<'notices' | 'maintenance'>(searchParams.get('tab') === 'maintenance' ? 'maintenance' : 'notices');
   
   const [complaints, setComplaints] = useState<any[]>([]);
-  const [myLeases, setMyLeases] = useState<any[]>([]); // NEW: To hold properties
+  const [myLeases, setMyLeases] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -28,7 +29,6 @@ export default function TenantCommunityPage() {
     window.location.href = '/login';
   };
   
-  // NEW: Added lease_id to formData
   const [formData, setFormData] = useState({ lease_id: '', title: '', description: '', category: 'MEDIUM', image_url: '' });
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function TenantCommunityPage() {
     }
   }, [searchParams]);
 
- useEffect(() => {
+  useEffect(() => {
     const fetchComplaintsAndLeases = async () => {
       setLoading(true);
       try {
@@ -45,7 +45,6 @@ export default function TenantCommunityPage() {
         
         // --- 1. SAFE FETCH COMPLAINTS ---
         const url1 = `${API_URL}/complaints/tenant`;
-        console.log("Fetching Complaints from:", url1);
         const resComplaints = await fetch(url1, { headers: { 'Authorization': `Bearer ${token}` } });
 
           if (resComplaints.status === 401 || resComplaints.status === 403) {
@@ -53,7 +52,6 @@ export default function TenantCommunityPage() {
             return;
           }
         
-        // If it's an HTML error page, catch it before it crashes!
         if (!resComplaints.ok) {
            const errText = await resComplaints.text();
            console.error("❌ Complaints API Failed:", resComplaints.status, errText.substring(0, 100));
@@ -64,7 +62,6 @@ export default function TenantCommunityPage() {
 
         // --- 2. SAFE FETCH LEASES ---
         const url2 = `${API_URL}/leases/tenant`;
-        console.log("Fetching Leases from:", url2);
         const resLeases = await fetch(url2, { headers: { 'Authorization': `Bearer ${token}` } });
 
           if (resLeases.status === 401 || resLeases.status === 403) {
@@ -72,7 +69,6 @@ export default function TenantCommunityPage() {
             return;
           }
         
-        // Catch HTML errors here too!
         if (!resLeases.ok) {
            const errText = await resLeases.text();
            console.error("❌ Leases API Failed:", resLeases.status, errText.substring(0, 100));
@@ -91,11 +87,8 @@ export default function TenantCommunityPage() {
     if (activeTab === 'maintenance') fetchComplaintsAndLeases();
   }, [activeTab]);
 
-const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    // 1. Safely grab the file first
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-
-    // 2. If the user clicked "Cancel" or no file exists, silently stop without crashing!
     if (!file) return;
 
     try {
@@ -103,7 +96,6 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
       
       setUploading(true);
       
-      // 3. 🚨 THE FIX: Bulletproof string splitting with a fallback
       const fileExt = file.name ? file.name.split('.').pop() : 'png';
       const filePath = `complaints/${Math.random()}.${fileExt}`; 
 
@@ -144,8 +136,7 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (refreshData.status === 'success') setComplaints(refreshData.complaints);
       } else {
         const errorData = await res.json();
-
-alert("Error: " + (errorData.error || errorData.message || "Unknown error occurred"));
+        alert("Error: " + (errorData.error || errorData.message || "Unknown error occurred"));
       }
     } catch (err) { console.error(err); } finally { setSubmitting(false); }
   };
@@ -191,7 +182,6 @@ alert("Error: " + (errorData.error || errorData.message || "Unknown error occurr
                         <h3 className="font-bold text-gray-900">{c.title}</h3>
                       </div>
                       
-                      {/* NEW: Displaying the location of the complaint */}
                       <p className="text-xs font-bold text-[#1c6456] mb-2 flex items-center gap-1">
                         📍 {c.rooms?.properties?.name || c.clusters?.properties?.name} - {c.rooms?.room_number ? `Room ${c.rooms.room_number}` : c.clusters?.name ? `Cluster ${c.clusters.name}` : 'Unknown Unit'}
                       </p>
@@ -220,7 +210,6 @@ alert("Error: " + (errorData.error || errorData.message || "Unknown error occurr
               <button type="button" onClick={() => setShowModal(false)} className="text-gray-400">✕</button>
             </div>
 
-            {/* 🚨 THE NEW TARGET PROPERTY DROPDOWN 🚨 */}
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Which property is this for?</label>
               <select required className="w-full border p-2.5 rounded-lg text-sm bg-gray-50" value={formData.lease_id} onChange={e => setFormData({...formData, lease_id: e.target.value})}>
@@ -244,5 +233,13 @@ alert("Error: " + (errorData.error || errorData.message || "Unknown error occurr
         </div>
       )}
     </div>
+  );
+}
+
+export default function TenantCommunityPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading Community Hub...</div>}>
+      <CommunityContent />
+    </Suspense>
   );
 }
