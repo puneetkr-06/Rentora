@@ -15,11 +15,6 @@ import complaintRoutes from './routes/complaintRoutes';
 dotenv.config();
 
 const app = express();
-const corsOptions = {
-  origin: ['http://localhost:3000', 'https://rentoramain.vercel.app'],
-  credentials: true,
-  optionsSuccessStatus: 200 
-};
 // Add this BEFORE all your route middleware
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'https://rentoramain.vercel.app');
@@ -32,8 +27,13 @@ app.use((req, res, next) => {
   next();
 });
 
+const corsOptions = {
+  origin: ['http://localhost:3000', 'https://rentoramain.vercel.app'],
+  credentials: true,
+  optionsSuccessStatus: 200 
+};
+
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // Route Middleware
