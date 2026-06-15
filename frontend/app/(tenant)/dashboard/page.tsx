@@ -15,7 +15,7 @@ export default function TenantDashboardOverview() {
   useEffect(() => {
     const fetchRentalStatus = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const [leaseResponse, complaintResponse] = await Promise.all([
           fetch(`${API_URL}/api/leases/tenant`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -26,7 +26,7 @@ export default function TenantDashboardOverview() {
         ]);
         
         if (leaseResponse.status === 401 || leaseResponse.status === 403) {
-          localStorage.removeItem('rentora_token');
+          sessionStorage.removeItem('rentora_token');
           window.location.href = '/login';
           return;
         }

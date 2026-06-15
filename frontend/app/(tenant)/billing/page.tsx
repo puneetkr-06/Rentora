@@ -17,7 +17,7 @@ export default function TenantBillingPage() {
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
         const res = await fetch(`${API_URL}/api/payments/tenant-history`, {
           headers: { 'Authorization': `Bearer ${token}` }

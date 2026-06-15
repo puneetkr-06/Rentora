@@ -23,7 +23,7 @@ export default function OwnerProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const res = await fetch(`${API_URL}/api/users/profile`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
@@ -54,7 +54,7 @@ export default function OwnerProfilePage() {
 
     setSaving(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const payload = {
         full_name: formData.full_name,
         phone: formData.phone || null,

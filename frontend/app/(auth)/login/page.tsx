@@ -41,8 +41,8 @@ export default function LoginPage() {
       }
 
       console.log("3. Saving token to Local Storage...");
-      localStorage.setItem('rentora_token', secureToken);
-      localStorage.setItem('rentora_user', JSON.stringify(data.user));
+      sessionStorage.setItem('rentora_token', secureToken);
+      sessionStorage.setItem('rentora_user', JSON.stringify(data.user));
 
       console.log("4. Redirecting to dashboard...");
       if (data.user.role === 'OWNER') {

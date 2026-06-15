@@ -10,7 +10,7 @@ export default function NoticeBoardWidget() {
   useEffect(() => {
     const fetchNotices = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
         const res = await fetch(`${API_URL}/api/notices/tenant`, {

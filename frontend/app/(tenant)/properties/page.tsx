@@ -21,7 +21,7 @@ export default function TenantPropertiesPage() {
 const fetchRentalStatus = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const response = await fetch(`${API_URL}/api/leases/tenant`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -29,8 +29,8 @@ const fetchRentalStatus = async () => {
       // 🚨 ADD THIS: Intercept the dead token immediately
       if (response.status === 401 || response.status === 403) {
         alert("Your session has expired for security reasons. Please log in again.");
-        localStorage.removeItem('rentora_token');
-        localStorage.removeItem('rentora_user');
+        sessionStorage.removeItem('rentora_token');
+        sessionStorage.removeItem('rentora_user');
         window.location.href = '/login';
         return;
       }
@@ -57,7 +57,7 @@ const fetchRentalStatus = async () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const response = await fetch(`${API_URL}/api/leases/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

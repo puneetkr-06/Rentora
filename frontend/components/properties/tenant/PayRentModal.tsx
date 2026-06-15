@@ -8,7 +8,7 @@ export default function PayRentModal({ isOpen, setIsOpen, rental }: any) {
   const handlePayment = async () => {
     setIsPaying(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const response = await fetch(`${API_URL}/api/payments/dummy-pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

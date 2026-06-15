@@ -30,7 +30,7 @@ export default function TenantProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const res = await fetch(`${API_URL}/api/users/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -93,7 +93,7 @@ export default function TenantProfilePage() {
 
     setSaving(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
       // 🚨 THE FIX: The Data Scrubber

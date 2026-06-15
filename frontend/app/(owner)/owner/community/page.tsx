@@ -23,7 +23,7 @@ export default function OwnerCommunityPage() {
     // 1. Fetch properties for your broadcast dropdown
     const fetchProperties = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const res = await fetch(`${API_URL}/api/properties`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -39,7 +39,7 @@ export default function OwnerCommunityPage() {
     // 2. Fetch the maintenance tickets
     const fetchComplaints = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const res = await fetch(`${API_URL}/api/complaints/owner`, { 
           headers: { 'Authorization': `Bearer ${token}` } 
         });
@@ -61,7 +61,7 @@ export default function OwnerCommunityPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const res = await fetch(`${API_URL}/api/notices/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -85,7 +85,7 @@ export default function OwnerCommunityPage() {
   // The new Maintenance Status Handler
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const res = await fetch(`${API_URL}/api/complaints/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

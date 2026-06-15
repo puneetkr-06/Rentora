@@ -22,7 +22,7 @@ export default function OwnerDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
         // 🚨 2. FETCH REAL PAYMENT METRICS ALONG WITH PROPERTIES & COMPLAINTS

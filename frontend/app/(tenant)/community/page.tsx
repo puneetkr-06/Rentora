@@ -24,8 +24,8 @@ function CommunityContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAuthFailure = () => {
-    localStorage.removeItem('rentora_token');
-    localStorage.removeItem('rentora_user');
+    sessionStorage.removeItem('rentora_token');
+    sessionStorage.removeItem('rentora_user');
     window.location.href = '/login';
   };
   
@@ -41,7 +41,7 @@ function CommunityContent() {
     const fetchComplaintsAndLeases = async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('rentora_token');
+        const token = sessionStorage.getItem('rentora_token');
         
         // --- 1. SAFE FETCH COMPLAINTS ---
         const url1 = `${API_URL}/api/complaints/tenant`;
@@ -115,7 +115,7 @@ function CommunityContent() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const res = await fetch(`${API_URL}/api/complaints`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

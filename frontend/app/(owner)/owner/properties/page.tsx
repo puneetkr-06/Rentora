@@ -21,14 +21,14 @@ export default function PropertiesPage() {
   const fetchProperties = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       const res = await fetch(`${API_URL}/api/properties`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       
       if (res.status === 401 || res.status === 403) {
-         localStorage.removeItem('rentora_token');
+         sessionStorage.removeItem('rentora_token');
          window.location.href = '/login';
          return;
       }
@@ -63,7 +63,7 @@ export default function PropertiesPage() {
   const handleCreateProperty = async () => {
     setIsCreating(true);
     try {
-      const token = localStorage.getItem('rentora_token');
+      const token = sessionStorage.getItem('rentora_token');
       
       // 1. Create Property
       const propRes = await fetch(`${API_URL}/api/properties`, {
