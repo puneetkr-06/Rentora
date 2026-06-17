@@ -19,6 +19,7 @@ The platform operates as a single codebase with role-based access control. User 
  ## 2. Tech Stack & Deployment Architecture
  ### 2.1 Technology Stack
 
+```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         FRONTEND                                │
 ├─────────────────────────────────────────────────────────────────┤
@@ -43,11 +44,13 @@ The platform operates as a single codebase with role-based access control. User 
 │                       DATA LAYER                                │
 ├─────────────────────────────────────────────────────────────────┤
 │  Database:       PostgreSQL                                     │
-│  Authentication: Supabase Auth                                  │     │
+│  Authentication: Supabase Auth                                  │ 
 └─────────────────────────────────────────────────────────────────┘
+```
 
 ### 2.2 Deployment Architecture
 
+```
 ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │                  │     │                  │     │                  │
 │   Vercel Edge    │────▶│ Vercel Serverless│────▶│   PostgreSQL     │
@@ -59,7 +62,7 @@ The platform operates as a single codebase with role-based access control. User 
         ▼                        ▼                        ▼
    Static Assets            /api/*  routes          Supabase Auth
    Client Hydration         JWT Validation          User Management
-   
+```
 # Rentora – High-Level System Architecture
 
  <img width="1039" height="688" alt="highlevelarch" src="https://github.com/user-attachments/assets/9e15c325-e884-4c0e-bdb4-748097cbec42" />
