@@ -1,8 +1,8 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import supabase from '../config/supabase';
+import { redis, clearCache } from '../utils/redis'; // Import Redis utilities
 
-// --- ADD A NEW PROPERTY ---
 export const createProperty = async (req: AuthRequest, res: Response): Promise<any> => {
   const { name, address, rules } = req.body;
   const owner_id = req.user.id;
@@ -18,17 +18,29 @@ export const createProperty = async (req: AuthRequest, res: Response): Promise<a
       .select().single();
 
     if (error) throw error;
+
+    // Invalidate caches since a new property was added
+    await clearCache(`properties_${owner_id}`);
+    await clearCache(`property_stats_${owner_id}`);
+
     res.status(201).json({ status: 'success', property: data });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
 
-// --- GET ALL PROPERTIES (UPDATED WITH REVENUE CALCULATION) ---
 export const getProperties = async (req: AuthRequest, res: Response): Promise<any> => {
   const owner_id = req.user.id;
+  const cacheKey = `properties_${owner_id}`;
 
   try {
+    // 1. Check Redis cache first
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json({ status: 'success', source: 'cache', properties: cachedData });
+    }
+
+    // 2. Fallback to Supabase if not in cache
     const { data, error } = await supabase
       .from('properties')
       .select('*, rooms(id, status, rent_amount)')
@@ -37,35 +49,31 @@ export const getProperties = async (req: AuthRequest, res: Response): Promise<an
 
     if (error) throw error;
 
-    // Calculate total rooms, available rooms, and total revenue!
     const formattedData = data.map((prop: any) => {
       const total_rooms = prop.rooms ? prop.rooms.length : 0;
       const occupied_rooms = prop.rooms ? prop.rooms.filter((r: any) => r.status === 'OCCUPIED') : [];
       const available_rooms = total_rooms - occupied_rooms.length;
       
-      // Sum up the rent_amount for all occupied rooms
       const property_revenue = occupied_rooms.reduce((sum: number, room: any) => sum + (room.rent_amount || 0), 0);
-      
-      delete prop.rooms; // Keep payload lightweight
+      delete prop.rooms; 
       
       return { ...prop, total_rooms, available_rooms, property_revenue };
     });
 
-    res.status(200).json({ status: 'success', properties: formattedData });
+    // 3. Save to Redis for 1 hour (3600 seconds)
+    await redis.set(cacheKey, formattedData, { ex: 3600 });
+
+    res.status(200).json({ status: 'success', source: 'database', properties: formattedData });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
 
-// --- DELETE PROPERTY ---
 export const deleteProperty = async (req: AuthRequest, res: Response): Promise<any> => {
   const { propertyId } = req.params;
   const owner_id = req.user.id;
 
   try {
-    // By checking owner_id, we ensure no one else can delete this property.
-    // Thanks to our SQL schema setup yesterday, deleting the property will 
-    // automatically CASCADE and delete all associated rooms!
     const { error } = await supabase
       .from('properties')
       .delete()
@@ -74,29 +82,38 @@ export const deleteProperty = async (req: AuthRequest, res: Response): Promise<a
 
     if (error) throw error;
 
-    res.status(200).json({ status: 'success', message: 'Property and all associated rooms deleted successfully.' });
+    // Invalidate caches since a property was removed
+    await clearCache(`properties_${owner_id}`);
+    await clearCache(`property_stats_${owner_id}`);
+
+    res.status(200).json({ status: 'success', message: 'Property deleted successfully.' });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
 
-// --- GET PROPERTY PERFORMANCE STATS ---
 export const getPropertyStats = async (req: AuthRequest, res: Response): Promise<any> => {
-  try {
-    const ownerId = req.user.id;
+  const owner_id = req.user.id;
+  const cacheKey = `property_stats_${owner_id}`;
 
-    // 1. Fetch all properties owned by the user
+  try {
+    // 1. Check Redis cache first
+    const cachedStats = await redis.get(cacheKey);
+    if (cachedStats) {
+      return res.status(200).json({ status: 'success', source: 'cache', stats: cachedStats });
+    }
+
+    // 2. Fallback to Supabase
     const { data: properties, error: propError } = await supabase
       .from('properties')
       .select('id, name')
-      .eq('owner_id', ownerId);
+      .eq('owner_id', owner_id);
 
     if (propError) throw propError;
     if (!properties || properties.length === 0) return res.json({ status: 'success', stats: [] });
 
     const propertyIds = properties.map(p => p.id);
 
-    // 2. Fetch all rooms belonging to those properties
     const { data: rooms, error: roomError } = await supabase
       .from('rooms')
       .select('id, property_id, status, rent_amount')
@@ -104,15 +121,11 @@ export const getPropertyStats = async (req: AuthRequest, res: Response): Promise
 
     if (roomError) throw roomError;
 
-    // 3. Calculate metrics per property
     const stats = properties.map(property => {
-      // Find all rooms for this specific property
       const propertyRooms = rooms?.filter(r => r.property_id === property.id) || [];
-      
       const totalRooms = propertyRooms.length;
       const occupiedRooms = propertyRooms.filter(r => r.status === 'OCCUPIED').length;
       
-      // Sum the rent only for rooms that actually have tenants
       const expectedRevenue = propertyRooms
         .filter(r => r.status === 'OCCUPIED')
         .reduce((sum, r) => sum + Number(r.rent_amount || 0), 0);
@@ -129,10 +142,12 @@ export const getPropertyStats = async (req: AuthRequest, res: Response): Promise
       };
     });
 
-    // 4. Sort properties by highest revenue first
     stats.sort((a, b) => b.expectedRevenue - a.expectedRevenue);
 
-    res.json({ status: 'success', stats });
+    // 3. Save to Redis for 1 hour
+    await redis.set(cacheKey, stats, { ex: 3600 });
+
+    res.json({ status: 'success', source: 'database', stats });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message });
   }
