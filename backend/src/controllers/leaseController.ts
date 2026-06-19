@@ -1,15 +1,13 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import supabase from '../config/supabase';
+import { redis, clearCache } from '../utils/redis';
 
-// Helper function to generate a random 6-character Join ID
 const generateJoinId = () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
-// --- 1. OWNER: CREATE A LEASE (Generates Join ID for Room or Cluster) ---
 export const createLease = async (req: AuthRequest, res: Response): Promise<any> => {
-  // 1. Add rent_amount to your destructured req.body
   const { room_id, cluster_id, start_date, end_date, deposit_amount, rent_amount } = req.body;
   const owner_id = req.user.id;
 
@@ -18,7 +16,6 @@ export const createLease = async (req: AuthRequest, res: Response): Promise<any>
   }
 
   try {
-    // ... [Keep your existing security verification checks here] ...
     if (room_id && rent_amount !== undefined) {
       const { error: roomUpdateError } = await supabase
         .from('rooms')
@@ -48,6 +45,10 @@ export const createLease = async (req: AuthRequest, res: Response): Promise<any>
 
     if (error) throw error;
 
+    // Invalidate Owner's property caches because rent_amount may have changed
+    await clearCache(`properties_${owner_id}`);
+    await clearCache(`property_stats_${owner_id}`);
+
     res.status(201).json({
       status: 'success',
       message: 'Lease created successfully. Share the Join ID with your tenant.',
@@ -59,8 +60,6 @@ export const createLease = async (req: AuthRequest, res: Response): Promise<any>
   }
 };
 
-// --- 2. TENANT: JOIN VIA JOIN ID ---
-// --- 2. TENANT: JOIN A ROOM VIA JOIN ID ---
 export const joinLease = async (req: AuthRequest, res: Response): Promise<any> => {
   const { join_id } = req.body;
   const tenant_id = req.user.id;
@@ -70,30 +69,25 @@ export const joinLease = async (req: AuthRequest, res: Response): Promise<any> =
   }
 
   try {
-    // 1. Find the lease associated with this Join ID
     const { data: lease, error: leaseError } = await supabase
       .from('leases')
-      .select('*')
+      .select('*, rooms(properties(owner_id)), clusters(properties(owner_id))')
       .eq('join_id', join_id)
       .single();
 
     if (leaseError || !lease) throw new Error('Invalid Join Code. Please check and try again.');
-    
-    // 2. Check if it's already claimed
     if (lease.tenant_id) throw new Error('This code has already been claimed by another tenant.');
 
-    // 3. 🚨 THE FIX: Claim the lease AND explicitly force the status to 'ACTIVE'
     const { error: updateError } = await supabase
       .from('leases')
-      .update({ 
-        tenant_id: tenant_id,
-        status: 'ACTIVE' // This ensures the Tenant Dashboard actually fetches it!
-      })
+      .update({ tenant_id, status: 'ACTIVE' })
       .eq('id', lease.id);
 
     if (updateError) throw updateError;
 
-    // 4. Update the Room or Cluster status to OCCUPIED
+    // Extract owner_id to invalidate their specific caches
+    const owner_id = lease.rooms?.properties?.owner_id || lease.clusters?.properties?.owner_id;
+
     if (lease.room_id) {
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('id', lease.room_id);
     }
@@ -102,18 +96,31 @@ export const joinLease = async (req: AuthRequest, res: Response): Promise<any> =
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('cluster_id', lease.cluster_id);
     }
 
+    // Clear caches for both the Tenant and the Owner
+    await clearCache(`tenant_leases_${tenant_id}`);
+    if (owner_id) {
+      await clearCache(`properties_${owner_id}`);
+      await clearCache(`property_stats_${owner_id}`);
+    }
+
     res.json({ status: 'success', message: 'Successfully joined property!' });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
 
-// --- 3. TENANT: GET CURRENT LEASES (Updated to handle multiple & clusters) ---
 export const getMyLeases = async (req: AuthRequest, res: Response): Promise<any> => {
   const tenant_id = req.user.id;
+  const cacheKey = `tenant_leases_${tenant_id}`;
 
   try {
-    // Fetch all active leases, pulling data for either the linked room OR linked cluster
+    // 1. Check Redis cache first
+    const cachedLeases = await redis.get(cacheKey);
+    if (cachedLeases) {
+      return res.status(200).json({ status: 'success', hasLeases: true, source: 'cache', leases: cachedLeases });
+    }
+
+    // 2. Fallback to Supabase
     const { data: leases, error } = await supabase
       .from('leases')
       .select('*, rooms(*, properties(*)), clusters(*, properties(*))')
@@ -126,17 +133,15 @@ export const getMyLeases = async (req: AuthRequest, res: Response): Promise<any>
       return res.status(200).json({ status: 'success', hasLeases: false, leases: [] });
     }
 
-    res.status(200).json({
-      status: 'success',
-      hasLeases: true,
-      leases: leases
-    });
+    // 3. Save to Redis for 1 hour
+    await redis.set(cacheKey, leases, { ex: 3600 });
+
+    res.status(200).json({ status: 'success', hasLeases: true, source: 'database', leases });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
 
-// --- 4. OWNER: DIRECTLY ASSIGN TENANT (Bypass Join ID) ---
 export const assignExistingTenant = async (req: AuthRequest, res: Response): Promise<any> => {
   const { room_id, cluster_id, tenant_id, start_date, deposit_amount } = req.body;
   const owner_id = req.user.id;
@@ -146,7 +151,6 @@ export const assignExistingTenant = async (req: AuthRequest, res: Response): Pro
   }
 
   try {
-    // Security check
     if (room_id) {
       const { data: room, error: roomError } = await supabase
         .from('rooms').select('id, properties(owner_id)').eq('id', room_id).single();
@@ -157,7 +161,6 @@ export const assignExistingTenant = async (req: AuthRequest, res: Response): Pro
       if (clusterError || !cluster || (cluster.properties as any).owner_id !== owner_id) return res.status(403).json({ error: 'Unauthorized.' });
     }
 
-    // Insert direct lease
     const { error: leaseError } = await supabase
       .from('leases')
       .insert([{
@@ -167,18 +170,22 @@ export const assignExistingTenant = async (req: AuthRequest, res: Response): Pro
           start_date,
           deposit_amount: deposit_amount || 0,
           status: 'ACTIVE',
-          join_id: 'DIRECT' // Indicates no join code was needed
+          join_id: 'DIRECT'
       }]);
 
     if (leaseError) throw leaseError;
 
-    // Update statuses
     if (room_id) {
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('id', room_id);
     } else if (cluster_id) {
       await supabase.from('clusters').update({ status: 'OCCUPIED' }).eq('id', cluster_id);
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('cluster_id', cluster_id);
     }
+
+    // Clear caches for both Owner and the newly assigned Tenant
+    await clearCache(`properties_${owner_id}`);
+    await clearCache(`property_stats_${owner_id}`);
+    await clearCache(`tenant_leases_${tenant_id}`);
 
     res.status(201).json({ status: 'success', message: 'Successfully assigned to existing tenant.' });
   } catch (error: any) {

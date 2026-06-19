@@ -4,9 +4,9 @@ import { requireAuth } from '../middleware/authMiddleware';
 
 const router = Router();
 
+router.get('/stats', requireAuth, getPropertyStats);
 router.post('/', requireAuth, createProperty);
 router.get('/', requireAuth, getProperties);
-router.get('/stats', requireAuth, getPropertyStats);
 router.delete('/:propertyId', requireAuth, deleteProperty); 
 
 export default router;
