@@ -11,6 +11,7 @@ import userRoutes from './routes/userRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import noticeRoutes from './routes/noticeRoutes';
 import complaintRoutes from './routes/complaintRoutes';
+import router from './routes/authRoutes';
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/keep-alive',router)
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'success', message: 'Rentora API is running perfectly in TypeScript.' });
