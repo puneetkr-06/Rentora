@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
+import supabase from './config/supabase';
 // Route Imports
 import authRoutes from './routes/authRoutes';
 import propertyRoutes from './routes/propertyRoutes';
@@ -11,7 +11,6 @@ import userRoutes from './routes/userRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import noticeRoutes from './routes/noticeRoutes';
 import complaintRoutes from './routes/complaintRoutes';
-import router from './routes/authRoutes';
 
 dotenv.config();
 
@@ -46,10 +45,20 @@ app.use('/api/users', userRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/complaints', complaintRoutes);
-app.use('/api/keep-alive',router)
 
-app.get('/api/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'success', message: 'Rentora API is running perfectly in TypeScript.' });
+app.get('/api/health', async (req: Request, res: Response) => {
+try {
+
+    await supabase.from('properties').select('id').limit(1);
+
+    res.status(200).json({ 
+      status: 'success', 
+      message: 'Rentora API and Supabase are awake and running perfectly.' 
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'API is awake, but Supabase ping failed.' });
+  }
+
 });
 
 app.get('/', (req: Request, res: Response) => {
