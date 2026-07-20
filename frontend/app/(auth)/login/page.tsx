@@ -52,7 +52,7 @@ export default function LoginPage() {
       }
 
     } catch (err: any) {
-      console.error("LOGIN CRASHED:", err.message);
+      console.error("Login failed:", err.message);
       setError(err.message);
     } finally {
       setLoading(false);

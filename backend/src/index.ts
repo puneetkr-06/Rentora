@@ -18,7 +18,9 @@ const app = express();
 
 
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://rentoramain.vercel.app'],
+  origin: function (origin: any, callback: any) {
+    callback(null, true); // Allow all origins for dev
+  },
   credentials: true,
   optionsSuccessStatus: 200 
 };

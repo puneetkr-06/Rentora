@@ -248,7 +248,7 @@ export const getTenantMetrics = async (req: AuthRequest, res: Response): Promise
 // --- 7. OWNER: GET DASHBOARD METRICS ---
 export const getOwnerMetrics = async (req: AuthRequest, res: Response): Promise<any> => {
   const owner_id = req.user.id;
-  const cacheKey = `owner_metrics_${owner_id}`;
+  const cacheKey = `owner_metrics_v4_${owner_id}`;
 
   try {
     const cachedData = await redis.get(cacheKey);
@@ -284,11 +284,22 @@ export const getOwnerMetrics = async (req: AuthRequest, res: Response): Promise<
 
     const { data: pendingInvoices, error: pendError } = await supabase.from('invoices').select('amount').in('lease_id', ownerLeaseIds).eq('status', 'PENDING');
     if (pendError) throw pendError;
-    const totalPending = (pendingInvoices || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const totalPending = (pendingInvoices || []).reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
 
-    const { data: paidInvoices, error: paidError } = await supabase.from('invoices').select('amount').in('lease_id', ownerLeaseIds).eq('status', 'PAID');
+    const { data: paidInvoices, error: paidError } = await supabase.from('invoices').select('amount, due_date, created_at').in('lease_id', ownerLeaseIds).eq('status', 'PAID');
     if (paidError) throw paidError;
-    const totalCollected = (paidInvoices || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    const totalCollected = (paidInvoices || []).reduce((sum, inv) => {
+      const invDate = new Date(inv.due_date || inv.created_at);
+      if (invDate.getMonth() === currentMonth && invDate.getFullYear() === currentYear) {
+        return sum + Number(inv.amount || 0);
+      }
+      return sum;
+    }, 0);
 
     const metricsPayload = { totalPending, totalCollected };
     await redis.set(cacheKey, metricsPayload, { ex: 3600 });

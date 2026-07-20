@@ -29,7 +29,7 @@ export default function OwnerDashboard() {
         const [propResponse, complaintResponse, metricsResponse] = await Promise.all([
           fetch(`${API_URL}/api/properties`, { headers }),
           fetch(`${API_URL}/api/complaints/owner`, { headers }),
-          fetch(`${API_URL}/api/payments/owner-metrics`, { headers }).catch(() => null) 
+          fetch(`${API_URL}/api/payments/metrics/owner`, { headers }).catch(() => null) 
         ]);
 
         // 🚨 THE FIX IS HERE: Notice the ".ok" checks!
@@ -116,7 +116,7 @@ export default function OwnerDashboard() {
             </div>
           </div>
           <h3 className="text-3xl font-bold text-gray-900">₹{metrics.monthlyRevenue.toLocaleString()}</h3>
-          <p className="text-xs text-gray-400 mt-2">Successful rent collections</p>
+          <p className="text-xs text-gray-400 mt-2">This Month</p>
         </div>
 
         {/* Metric 3: Pending Dues */}
