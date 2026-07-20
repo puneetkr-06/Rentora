@@ -39,12 +39,12 @@ export const createNotice = async (req: AuthRequest, res: Response): Promise<any
     // 🚨 FAN-OUT INVALIDATION: Find all tenants in this property and clear their caches
     const { data: activeLeases } = await supabase
       .from('leases')
-      .select('tenant_id, rooms(property_id), clusters(property_id)')
+      .select('tenant_id, rooms(property_id)')
       .eq('status', 'ACTIVE');
 
     if (activeLeases) {
       activeLeases.forEach(async (lease: any) => {
-        const pId = lease.rooms?.property_id || lease.clusters?.property_id;
+        const pId = lease.rooms?.property_id;
         if (pId === property_id && lease.tenant_id) {
           await clearCache(`tenant_notices_${lease.tenant_id}`);
         }
@@ -72,7 +72,7 @@ export const getTenantNotices = async (req: AuthRequest, res: Response): Promise
     // 2. Fallback to Database
     const { data: leases, error: leaseError } = await supabase
       .from('leases')
-      .select(`id, rooms(property_id), clusters(property_id)`)
+      .select(`id, rooms(property_id)`)
       .eq('tenant_id', tenant_id)
       .eq('status', 'ACTIVE');
 
@@ -86,10 +86,8 @@ export const getTenantNotices = async (req: AuthRequest, res: Response): Promise
     
     leases.forEach((lease: any) => {
       const room = Array.isArray(lease.rooms) ? lease.rooms[0] : lease.rooms;
-      const cluster = Array.isArray(lease.clusters) ? lease.clusters[0] : lease.clusters;
 
       if (room?.property_id) propertyIds.add(room.property_id);
-      if (cluster?.property_id) propertyIds.add(cluster.property_id);
     });
 
     const propertyIdArray = Array.from(propertyIds);

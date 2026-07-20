@@ -25,7 +25,7 @@ export const processDummyPayment = async (req: AuthRequest, res: Response): Prom
 // 🚨 CACHE INVALIDATION: Find who owns this lease to clear both Tenant and Owner dashboards
     const { data: leaseInfo } = await supabase
       .from('leases')
-      .select('tenant_id, rooms(properties(owner_id)), clusters(properties(owner_id))')
+      .select('tenant_id, rooms(properties(owner_id))')
       .eq('id', lease_id)
       .single();
 
@@ -41,14 +41,7 @@ export const processDummyPayment = async (req: AuthRequest, res: Response): Prom
         roomOwner = props?.owner_id;
       }
 
-      let clusterOwner = null;
-      if (info.clusters) {
-        const cluster = Array.isArray(info.clusters) ? info.clusters[0] : info.clusters;
-        const props = Array.isArray(cluster?.properties) ? cluster.properties[0] : cluster?.properties;
-        clusterOwner = props?.owner_id;
-      }
-
-      const owner_id = roomOwner || clusterOwner;
+      const owner_id = roomOwner;
 
       // 3. Clear the actual Redis caches
       if (info.tenant_id) {
@@ -100,14 +93,13 @@ export const getOwnerPayments = async (req: AuthRequest, res: Response): Promise
     const propertyIds = (properties || []).map(p => p.id);
     if (propertyIds.length === 0) return res.json({ status: 'success', payments: [] });
 
-    const { data: leases, error: leaseError } = await supabase.from('leases').select('id, rooms(property_id), clusters(property_id)');
+    const { data: leases, error: leaseError } = await supabase.from('leases').select('id, rooms(property_id)');
     if (leaseError) throw leaseError;
       
     // 🚨 BUG FIX: (leases || []) ensures we never run .map() on null/undefined!
     const ownerLeaseIds = (leases || []).filter((l: any) => {
       const roomPropId = Array.isArray(l.rooms) ? l.rooms[0]?.property_id : l.rooms?.property_id;
-      const clusterPropId = Array.isArray(l.clusters) ? l.clusters[0]?.property_id : l.clusters?.property_id;
-      return propertyIds.includes(roomPropId) || propertyIds.includes(clusterPropId);
+      return propertyIds.includes(roomPropId);
     }).map((l: any) => l.id);
 
     if (ownerLeaseIds.length === 0) return res.json({ status: 'success', payments: [] });
@@ -120,7 +112,7 @@ export const getOwnerPayments = async (req: AuthRequest, res: Response): Promise
 
     const { data: payments, error: payError } = await supabase
       .from('payments')
-      .select(`id, amount_paid, payment_date, payment_method, invoices (due_date, type, leases (id, start_date, users ( full_name ), rooms ( room_number, properties ( id, name ) ), clusters ( name, properties ( id, name ) )))`)
+      .select(`id, amount_paid, payment_date, payment_method, invoices (due_date, type, leases (id, start_date, users ( full_name ), rooms ( room_number, properties ( id, name ) )))`)
       .in('invoice_id', invoiceIds)
       .order('payment_date', { ascending: false });
 
@@ -157,7 +149,7 @@ export const getTenantPayments = async (req: AuthRequest, res: Response): Promis
 
     const { data: payments, error: payError } = await supabase
       .from('payments')
-      .select(`id, amount_paid, payment_date, invoices:invoice_id (due_date, type, leases (id, start_date, rooms ( properties ( name ) ), clusters ( properties ( name ) )))`)
+      .select(`id, amount_paid, payment_date, invoices:invoice_id (due_date, type, leases (id, start_date, rooms ( properties ( name ) )))`)
       .in('invoice_id', invoiceIds)
       .order('payment_date', { ascending: false });
 
@@ -176,15 +168,14 @@ const syncLeaseInvoices = async (leaseId: string) => {
   try {
     const { data: lease, error } = await supabase
       .from('leases')
-      .select('*, rooms(rent_amount), clusters(rent_amount)')
+      .select('*, rooms(rent_amount)')
       .eq('id', leaseId)
       .single();
 
     if (error || !lease || !lease.start_date) return;
 
     const roomRent = Array.isArray(lease.rooms) ? lease.rooms[0]?.rent_amount : lease.rooms?.rent_amount;
-    const clusterRent = Array.isArray(lease.clusters) ? lease.clusters[0]?.rent_amount : lease.clusters?.rent_amount;
-    const rentAmount = lease.rent_amount || roomRent || clusterRent || lease.deposit_amount || 0;
+    const rentAmount = lease.rent_amount || roomRent || lease.deposit_amount || 0;
     
     const startDate = new Date(lease.start_date);
     const now = new Date();
@@ -269,16 +260,19 @@ export const getOwnerMetrics = async (req: AuthRequest, res: Response): Promise<
     const propertyIds = (properties || []).map(p => p.id);
     if (propertyIds.length === 0) return res.json({ status: 'success', totalPending: 0, totalCollected: 0 });
 
-    const { data: leases, error: leaseError } = await supabase.from('leases').select('id, rooms(property_id), clusters(property_id)').eq('status', 'ACTIVE');
+    const { data: leases, error: leaseError } = await supabase.from('leases').select('id, status, rooms(property_id)');
     if (leaseError) throw leaseError;
 
     const ownerLeases = (leases || []).filter((l: any) => {
       const roomPropId = Array.isArray(l.rooms) ? l.rooms[0]?.property_id : l.rooms?.property_id;
-      const clusterPropId = Array.isArray(l.clusters) ? l.clusters[0]?.property_id : l.clusters?.property_id;
-      return propertyIds.includes(roomPropId) || propertyIds.includes(clusterPropId);
+      return propertyIds.includes(roomPropId);
     });
 
-    for (const lease of ownerLeases) await syncLeaseInvoices(lease.id);
+    for (const lease of ownerLeases) {
+      if (lease.status === 'ACTIVE') {
+        await syncLeaseInvoices(lease.id);
+      }
+    }
 
     const ownerLeaseIds = ownerLeases.map(l => l.id);
 
@@ -288,16 +282,13 @@ export const getOwnerMetrics = async (req: AuthRequest, res: Response): Promise<
       return res.json({ status: 'success', source: 'database', ...emptyMetrics });
     }
 
-    const { data: invoices, error: invError } = await supabase.from('invoices').select('amount, status').in('lease_id', ownerLeaseIds);
-    if (invError) throw invError;
+    const { data: pendingInvoices, error: pendError } = await supabase.from('invoices').select('amount').in('lease_id', ownerLeaseIds).eq('status', 'PENDING');
+    if (pendError) throw pendError;
+    const totalPending = (pendingInvoices || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
 
-    let totalPending = 0;
-    let totalCollected = 0;
-
-    (invoices || []).forEach(inv => {
-      if (inv.status === 'PENDING') totalPending += (inv.amount || 0);
-      if (inv.status === 'PAID') totalCollected += (inv.amount || 0);
-    });
+    const { data: paidInvoices, error: paidError } = await supabase.from('invoices').select('amount').in('lease_id', ownerLeaseIds).eq('status', 'PAID');
+    if (paidError) throw paidError;
+    const totalCollected = (paidInvoices || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
 
     const metricsPayload = { totalPending, totalCollected };
     await redis.set(cacheKey, metricsPayload, { ex: 3600 });

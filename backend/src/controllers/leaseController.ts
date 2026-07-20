@@ -8,11 +8,11 @@ const generateJoinId = () => {
 };
 
 export const createLease = async (req: AuthRequest, res: Response): Promise<any> => {
-  const { room_id, cluster_id, start_date, end_date, deposit_amount, rent_amount } = req.body;
+  const { room_id, start_date, end_date, deposit_amount, rent_amount } = req.body;
   const owner_id = req.user.id;
 
-  if ((!room_id && !cluster_id) || !start_date || deposit_amount === undefined) {
-    return res.status(400).json({ error: 'Target ID, Start Date, and Deposit Amount are required.' });
+  if (!room_id || !start_date || deposit_amount === undefined) {
+    return res.status(400).json({ error: 'Room ID, Start Date, and Deposit Amount are required.' });
   }
 
   try {
@@ -32,7 +32,6 @@ export const createLease = async (req: AuthRequest, res: Response): Promise<any>
       .insert([
         {
           room_id: room_id || null,
-          cluster_id: cluster_id || null,
           start_date,
           end_date,
           deposit_amount,
@@ -71,7 +70,7 @@ export const joinLease = async (req: AuthRequest, res: Response): Promise<any> =
   try {
     const { data: lease, error: leaseError } = await supabase
       .from('leases')
-      .select('*, rooms(properties(owner_id)), clusters(properties(owner_id))')
+      .select('*, rooms(properties(owner_id))')
       .eq('join_id', join_id)
       .single();
 
@@ -86,14 +85,10 @@ export const joinLease = async (req: AuthRequest, res: Response): Promise<any> =
     if (updateError) throw updateError;
 
     // Extract owner_id to invalidate their specific caches
-    const owner_id = lease.rooms?.properties?.owner_id || lease.clusters?.properties?.owner_id;
+    const owner_id = lease.rooms?.properties?.owner_id;
 
     if (lease.room_id) {
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('id', lease.room_id);
-    }
-    if (lease.cluster_id) {
-      await supabase.from('clusters').update({ status: 'OCCUPIED' }).eq('id', lease.cluster_id);
-      await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('cluster_id', lease.cluster_id);
     }
 
     // Clear caches for both the Tenant and the Owner
@@ -123,7 +118,7 @@ export const getMyLeases = async (req: AuthRequest, res: Response): Promise<any>
     // 2. Fallback to Supabase
     const { data: leases, error } = await supabase
       .from('leases')
-      .select('*, rooms(*, properties(*)), clusters(*, properties(*))')
+      .select('*, rooms(*, properties(*))')
       .eq('tenant_id', tenant_id)
       .eq('status', 'ACTIVE');
 
@@ -143,11 +138,11 @@ export const getMyLeases = async (req: AuthRequest, res: Response): Promise<any>
 };
 
 export const assignExistingTenant = async (req: AuthRequest, res: Response): Promise<any> => {
-  const { room_id, cluster_id, tenant_id, start_date, deposit_amount } = req.body;
+  const { room_id, tenant_id, start_date, deposit_amount } = req.body;
   const owner_id = req.user.id;
 
-  if ((!room_id && !cluster_id) || !tenant_id || !start_date) {
-    return res.status(400).json({ error: 'Room/Cluster ID, Tenant ID, and Start Date are required.' });
+  if (!room_id || !tenant_id || !start_date) {
+    return res.status(400).json({ error: 'Room ID, Tenant ID, and Start Date are required.' });
   }
 
   try {
@@ -155,17 +150,12 @@ export const assignExistingTenant = async (req: AuthRequest, res: Response): Pro
       const { data: room, error: roomError } = await supabase
         .from('rooms').select('id, properties(owner_id)').eq('id', room_id).single();
       if (roomError || !room || (room.properties as any).owner_id !== owner_id) return res.status(403).json({ error: 'Unauthorized.' });
-    } else if (cluster_id) {
-      const { data: cluster, error: clusterError } = await supabase
-        .from('clusters').select('id, properties(owner_id)').eq('id', cluster_id).single();
-      if (clusterError || !cluster || (cluster.properties as any).owner_id !== owner_id) return res.status(403).json({ error: 'Unauthorized.' });
     }
 
     const { error: leaseError } = await supabase
       .from('leases')
       .insert([{
           room_id: room_id || null,
-          cluster_id: cluster_id || null,
           tenant_id,
           start_date,
           deposit_amount: deposit_amount || 0,
@@ -177,9 +167,6 @@ export const assignExistingTenant = async (req: AuthRequest, res: Response): Pro
 
     if (room_id) {
       await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('id', room_id);
-    } else if (cluster_id) {
-      await supabase.from('clusters').update({ status: 'OCCUPIED' }).eq('id', cluster_id);
-      await supabase.from('rooms').update({ status: 'OCCUPIED' }).eq('cluster_id', cluster_id);
     }
 
     // Clear caches for both Owner and the newly assigned Tenant

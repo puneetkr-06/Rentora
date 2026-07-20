@@ -95,10 +95,7 @@ export default function TenantBillingPage() {
                 <tr><td colSpan={5} className="p-8 text-center text-gray-500">No payment history found.</td></tr>
               ) : (
                 payments.map((payment) => {
-                  const isCluster = !!payment.invoices?.leases?.clusters;
-                  const propertyName = isCluster 
-                    ? payment.invoices?.leases?.clusters?.properties?.name 
-                    : payment.invoices?.leases?.rooms?.properties?.name;
+                  const propertyName = payment.invoices?.leases?.rooms?.properties?.name;
                   const billingMonth = billingMonthByPaymentId[payment.id] || 'N/A';
 
                   return (

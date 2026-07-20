@@ -72,20 +72,14 @@ export default function OwnerBillingPage() {
 
   // Extract Unique Property Names for the Dropdown Filter
   const uniqueProperties = Array.from(new Set(payments.map(p => {
-    const isCluster = !!p.invoices?.leases?.clusters;
-    return isCluster 
-      ? p.invoices?.leases?.clusters?.properties?.name 
-      : p.invoices?.leases?.rooms?.properties?.name;
+    return p.invoices?.leases?.rooms?.properties?.name;
   }))).filter(Boolean);
 
   // Apply the Filter
   const filteredPayments = propertyFilter === 'ALL' 
     ? payments 
     : payments.filter(p => {
-        const isCluster = !!p.invoices?.leases?.clusters;
-        const propName = isCluster 
-          ? p.invoices?.leases?.clusters?.properties?.name 
-          : p.invoices?.leases?.rooms?.properties?.name;
+        const propName = p.invoices?.leases?.rooms?.properties?.name;
         return propName === propertyFilter;
       });
 
@@ -134,13 +128,8 @@ export default function OwnerBillingPage() {
                 <tr><td colSpan={6} className="p-8 text-center text-gray-500">No payments found matching criteria.</td></tr>
               ) : (
                 filteredPayments.map((payment) => {
-                  const isCluster = !!payment.invoices?.leases?.clusters;
-                  const propertyName = isCluster 
-                    ? payment.invoices?.leases?.clusters?.properties?.name 
-                    : payment.invoices?.leases?.rooms?.properties?.name;
-                  const unitName = isCluster 
-                    ? `Cluster: ${payment.invoices?.leases?.clusters?.name}`
-                    : `Room: ${payment.invoices?.leases?.rooms?.room_number}`;
+                  const propertyName = payment.invoices?.leases?.rooms?.properties?.name;
+                  const unitName = `Room: ${payment.invoices?.leases?.rooms?.room_number}`;
                   const tenantName = payment.invoices?.leases?.users?.full_name || 'Unknown Tenant';
                   
                   // 4. Extract the calculated Billing Month

@@ -11,9 +11,7 @@ const normalizeComplaint = (complaint: any) => ({
   properties: complaint?.properties ?? {
     name:
       complaint?.rooms?.properties?.name ??
-      complaint?.clusters?.properties?.name ??
       complaint?.rooms?.properties?.[0]?.name ??
-      complaint?.clusters?.properties?.[0]?.name ??
       null,
   },
 });
@@ -29,7 +27,7 @@ export const createComplaint = async (req: AuthRequest, res: Response): Promise<
     // 1. Look up the specific lease the tenant selected
     const { data: lease } = await supabase
       .from('leases')
-      .select('room_id, cluster_id')
+      .select('room_id')
       .eq('id', lease_id)
       .eq('tenant_id', tenant_id)
       .single();
@@ -41,7 +39,6 @@ export const createComplaint = async (req: AuthRequest, res: Response): Promise<
       .insert([{
         tenant_id,
         room_id: lease.room_id,
-        cluster_id: lease.cluster_id,
         title,
         description,
         priority: category,
@@ -63,7 +60,7 @@ export const getTenantComplaints = async (req: AuthRequest, res: Response): Prom
   try {
     const { data: complaints, error } = await supabase
       .from('complaints')
-      .select('*, rooms(room_number, properties(name)), clusters(name, properties(name))')
+      .select('*, rooms(room_number, properties(name))')
       .eq('tenant_id', req.user.id)
       .order('created_at', { ascending: false });
 
@@ -83,31 +80,19 @@ export const getOwnerComplaints = async (req: AuthRequest, res: Response): Promi
     if (propertyIds.length === 0) return res.json({ status: 'success', complaints: [] });
 
     const { data: rooms } = await supabase.from('rooms').select('id').in('property_id', propertyIds);
-    const { data: clusters } = await supabase.from('clusters').select('id').in('property_id', propertyIds);
-
     const roomIds = rooms?.map(room => room.id) || [];
-    const clusterIds = clusters?.map(cluster => cluster.id) || [];
 
-    const complaintSelect = '*, users(full_name, phone), rooms(room_number, properties(name)), clusters(name, properties(name))';
+    let complaints: any[] = [];
+    if (roomIds.length) {
+      const complaintSelect = '*, users(full_name, phone), rooms(room_number, properties(name))';
+      const { data, error } = await supabase.from('complaints').select(complaintSelect).in('room_id', roomIds).order('created_at', { ascending: false });
+      if (error) throw error;
+      complaints = data || [];
+    }
 
-    const [roomComplaintsResult, clusterComplaintsResult] = await Promise.all([
-      roomIds.length
-        ? supabase.from('complaints').select(complaintSelect).in('room_id', roomIds).order('created_at', { ascending: false })
-        : Promise.resolve({ data: [], error: null as any }),
-      clusterIds.length
-        ? supabase.from('complaints').select(complaintSelect).in('cluster_id', clusterIds).order('created_at', { ascending: false })
-        : Promise.resolve({ data: [], error: null as any }),
-    ]);
+    const normalizedComplaints = complaints.map(normalizeComplaint);
 
-    const error = roomComplaintsResult.error || clusterComplaintsResult.error;
-    const complaints = [...(roomComplaintsResult.data || []), ...(clusterComplaintsResult.data || [])];
-
-    if (error) throw error;
-
-    const dedupedComplaints = Array.from(new Map(complaints.map(complaint => [complaint.id, complaint])).values())
-      .map(normalizeComplaint);
-
-    res.json({ status: 'success', complaints: dedupedComplaints });
+    res.json({ status: 'success', complaints: normalizedComplaints });
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }

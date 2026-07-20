@@ -1,9 +1,8 @@
 import React from 'react';
 
 export default function TenantRentalCard({ rental, openPayModal, openLedgerModal }: any) {
-  const isCluster = !!rental.cluster_id;
-  const propertyDetails = isCluster ? rental.clusters?.properties : rental.rooms?.properties;
-  const unitName = isCluster ? `Cluster: ${rental.clusters?.name}` : `Room: ${rental.rooms?.room_number}`;
+  const propertyDetails = rental.rooms?.properties;
+  const unitName = `Room: ${rental.rooms?.room_number}`;
   
   // Calculate next due date (1 month after start date)
   const startDate = new Date(rental.start_date);

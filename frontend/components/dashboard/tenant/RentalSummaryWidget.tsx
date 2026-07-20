@@ -16,9 +16,8 @@ export default function RentalSummaryWidget({ rentals }: any) {
           <p className="text-sm text-gray-500 text-center py-8">No active rentals found.</p>
         ) : (
           rentals.map((rental: any) => {
-            const isCluster = !!rental.cluster_id;
-            const propertyDetails = isCluster ? rental.clusters?.properties : rental.rooms?.properties;
-            const unitName = isCluster ? `Cluster: ${rental.clusters?.name}` : `Room: ${rental.rooms?.room_number}`;
+            const propertyDetails = rental.rooms?.properties;
+            const unitName = `Room: ${rental.rooms?.room_number}`;
             
             const startDate = new Date(rental.start_date);
             const nextDueDate = rental.start_date 

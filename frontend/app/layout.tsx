@@ -18,8 +18,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased bg-gray-50 text-gray-900`}>
-        {/* All your other layouts (Auth, Owner, Tenant) will be injected here */}
+      <body className={`${inter.className} antialiased bg-gray-50 text-gray-900`} suppressHydrationWarning>
+        {/* All your layouts (Auth, Owner, Tenant) will be injected here */}
         {children}
       </body>
     </html>
