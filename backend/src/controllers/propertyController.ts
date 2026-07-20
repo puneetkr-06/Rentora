@@ -4,7 +4,7 @@ import supabase from '../config/supabase';
 import { redis, clearCache } from '../utils/redis'; // Import Redis utilities
 
 export const createProperty = async (req: AuthRequest, res: Response): Promise<any> => {
-  const { name, address, rules } = req.body;
+  const { name, address } = req.body;
   const owner_id = req.user.id;
 
   if (!name || !address) {
@@ -14,7 +14,7 @@ export const createProperty = async (req: AuthRequest, res: Response): Promise<a
   try {
     const { data, error } = await supabase
       .from('properties')
-      .insert([{ owner_id, name, address, rules }])
+      .insert([{ owner_id, name, address }])
       .select().single();
 
     if (error) throw error;
