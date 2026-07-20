@@ -48,7 +48,7 @@ export default function LedgerModal({ isOpen, setIsLedgerModalOpen, selectedRoom
     const result: Record<string, string> = {};
     const rentInvoices = [...ledger]
       .filter((inv: any) => inv.type === 'RENT')
-      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
 
     const baseDate = activeLease?.start_date
       ? new Date(activeLease.start_date)

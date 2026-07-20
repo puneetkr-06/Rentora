@@ -8,17 +8,43 @@ export const processDummyPayment = async (req: AuthRequest, res: Response): Prom
   const { lease_id, amount } = req.body;
 
   try {
-    const { data: invoice, error: invoiceError } = await supabase
+    // 1. Sync JIT invoices first so pending invoices exist
+    await syncLeaseInvoices(lease_id);
+
+    // 2. Find oldest pending invoice
+    const { data: oldestInvoice, error: fetchError } = await supabase
       .from('invoices')
-      .insert({ lease_id, amount, due_date: new Date().toISOString(), type: 'RENT', status: 'PAID' })
-      .select()
+      .select('*')
+      .eq('lease_id', lease_id)
+      .eq('status', 'PENDING')
+      .order('due_date', { ascending: true })
+      .limit(1)
       .single();
 
-    if (invoiceError) throw invoiceError;
+    let invoiceToPay;
+
+    if (!oldestInvoice || fetchError) {
+      const { data: newInvoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({ lease_id, amount, due_date: new Date().toISOString(), type: 'RENT', status: 'PAID' })
+        .select()
+        .single();
+      if (invoiceError) throw invoiceError;
+      invoiceToPay = newInvoice;
+    } else {
+      const { data: updatedInvoice, error: updateError } = await supabase
+        .from('invoices')
+        .update({ status: 'PAID' })
+        .eq('id', oldestInvoice.id)
+        .select()
+        .single();
+      if (updateError) throw updateError;
+      invoiceToPay = updatedInvoice;
+    }
 
     const { error: paymentError } = await supabase
       .from('payments')
-      .insert({ invoice_id: invoice.id, amount_paid: amount, payment_date: new Date().toISOString(), payment_method: 'DUMMY_UPI' });
+      .insert({ invoice_id: invoiceToPay.id, amount_paid: amount, payment_date: new Date().toISOString(), payment_method: 'DUMMY_UPI' });
 
     if (paymentError) throw paymentError;
 
@@ -50,7 +76,7 @@ export const processDummyPayment = async (req: AuthRequest, res: Response): Prom
       }
       if (owner_id) {
         await clearCache(`owner_payments_${owner_id}`);
-        await clearCache(`owner_metrics_${owner_id}`);
+        await clearCache(`owner_metrics_v4_${owner_id}`);
       }
     }
 
@@ -68,7 +94,7 @@ export const getLedger = async (req: AuthRequest, res: Response): Promise<any> =
       .from('invoices')
       .select('*, payments(*)')
       .eq('lease_id', leaseId)
-      .order('created_at', { ascending: false });
+      .order('due_date', { ascending: false });
 
     if (error) throw error;
     res.json({ status: 'success', ledger });

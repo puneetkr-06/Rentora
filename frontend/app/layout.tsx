@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   description: "A comprehensive SaaS platform for property owners and tenants.",
 };
 
+import FetchInterceptor from '@/components/FetchInterceptor';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased bg-gray-50 text-gray-900`} suppressHydrationWarning>
+        <FetchInterceptor />
         {/* All your layouts (Auth, Owner, Tenant) will be injected here */}
         {children}
       </body>

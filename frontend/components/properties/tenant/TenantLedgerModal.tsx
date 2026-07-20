@@ -30,7 +30,7 @@ export default function TenantLedgerModal({ isOpen, setIsOpen, rental }: any) {
     const result: Record<string, string> = {};
     const rentInvoices = [...ledger]
       .filter((inv: any) => inv.type === 'RENT')
-      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
 
     const baseDate = rental?.start_date
       ? new Date(rental.start_date)
