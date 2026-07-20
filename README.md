@@ -73,7 +73,7 @@ The platform operates as a single codebase with role-based access control. User 
 
 DATABASE ARCHITECTURE
 
-<img width="1762" height="1176" alt="diagram-export-17-06-2026-15_57_04" src="https://github.com/user-attachments/assets/8985d08b-d519-4cd3-9f62-27a3ff5d16a1" />
+<img width="1123" height="671" alt="Screenshot 2026-07-20 at 10 41 34 PM" src="https://github.com/user-attachments/assets/ff199a09-4a1e-48ff-acb9-29e40dfd2570" />
 
 
 
